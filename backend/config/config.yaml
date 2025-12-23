@@ -7,10 +7,11 @@ account:
   allow_signup: true
 convert_legacy_config: false
 database:
-  user: hanko
-  password: hanko
-  host: localhost
-  port: "5433"
+  user: zenkai_hanko_user
+  password: trangbg2k
+  host: 100.105.46.111
+  port: "5432"
+  database: zenkai_hanko_db
   dialect: postgres
 debug: false
 email:
