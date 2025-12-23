@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -247,7 +248,13 @@ func init() {
 
 // extractFlowID extracts just the flow ID from "action@flowID" format
 func extractFlowID(queryParamValue string) (uuid.UUID, error) {
-	parts := strings.Split(queryParamValue, "@")
+	// URL-decode the query parameter value first
+	decodedValue, err := url.QueryUnescape(queryParamValue)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to URL-decode query parameter: %w", err)
+	}
+
+	parts := strings.Split(decodedValue, "@")
 	if len(parts) != 2 {
 		return uuid.Nil, fmt.Errorf("invalid flow id format")
 	}

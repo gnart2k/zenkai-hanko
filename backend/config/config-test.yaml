@@ -18,14 +18,14 @@ email:
   optional: false
   acquire_on_registration: true
   acquire_on_login: false
-  require_verification: true
+  require_verification: false
   limit: 5
   use_as_login_identifier: true
   max_length: 100
   use_for_authentication: true
   passcode_ttl: 300
 email_delivery:
-  enabled: true
+  enabled: false
   from_address: noreply@hanko.io
   from_name: Hanko
   smtp:

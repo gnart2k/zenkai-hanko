@@ -1,0 +1,1 @@
+cd /Users/mac/se/zenkai/hanko/backend && ./hanko serve public --config config/config.yaml
