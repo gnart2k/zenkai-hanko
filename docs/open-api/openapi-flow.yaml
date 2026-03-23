@@ -1,0 +1,3457 @@
+openapi: 3.0.3
+info:
+  title: Flow API
+  description: Flow API
+  version: 1.2.0
+servers:
+  - url: "https://{tenant_id}.hanko.io"
+    variables:
+      tenant_id:
+        default: ""
+        description: "The (UU)ID of a tenant. Replace the default value with your tenant ID."
+paths:
+  /registration:
+    post:
+      tags:
+        - flow
+      description: Initialize or advance a registration flow.
+      summary: Registration
+      parameters:
+        - $ref: "#/components/parameters/ActionParam"
+        - $ref: "#/components/parameters/LanguageParam"
+      requestBody:
+        $ref: "#/components/requestBodies/RegistrationRequestBody"
+      responses:
+        200:
+          $ref: "#/components/responses/RegistrationFlowResponse"
+        400:
+          $ref: "#/components/responses/RegistrationFlowResponseBadRequestError"
+        401:
+          $ref: "#/components/responses/FlowResponseUnauthorizedError"
+        403:
+          $ref: "#/components/responses/FlowResponseForbiddenError"
+        410:
+          $ref: "#/components/responses/FlowResponseGoneError"
+        429:
+          $ref: "#/components/responses/FlowResponseTooManyRequestsError"
+        500:
+          $ref: "#/components/responses/FlowResponseInternalServerError"
+  /login:
+    post:
+      tags:
+        - flow
+      description: Initialize or advance a login flow.
+      summary: Login
+      parameters:
+        - $ref: "#/components/parameters/ActionParam"
+        - $ref: "#/components/parameters/LanguageParam"
+      requestBody:
+        $ref: "#/components/requestBodies/LoginRequestBody"
+      responses:
+        200:
+          $ref: "#/components/responses/LoginFlowResponse"
+        400:
+          $ref: "#/components/responses/LoginFlowResponseBadRequestError"
+        401:
+          $ref: "#/components/responses/FlowResponseUnauthorizedError"
+        403:
+          $ref: "#/components/responses/FlowResponseForbiddenError"
+        410:
+          $ref: "#/components/responses/FlowResponseGoneError"
+        429:
+          $ref: "#/components/responses/FlowResponseTooManyRequestsError"
+        500:
+          $ref: "#/components/responses/FlowResponseInternalServerError"
+  /profile:
+    post:
+      tags:
+        - flow
+      description: Initialize or advance a profile flow.
+      summary: Profile
+      security:
+        - CookieAuth: []
+        - BearerTokenAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ActionParam"
+        - $ref: "#/components/parameters/LanguageParam"
+      requestBody:
+        $ref: "#/components/requestBodies/ProfileRequestBody"
+      responses:
+        200:
+          $ref: "#/components/responses/ProfileFlowResponse"
+        400:
+          $ref: "#/components/responses/ProfileFlowResponseBadRequestError"
+        401:
+          $ref: "#/components/responses/FlowResponseUnauthorizedError"
+        403:
+          $ref: "#/components/responses/FlowResponseForbiddenError"
+        404:
+          $ref: "#/components/responses/FlowResponseNotFoundError"
+        410:
+          $ref: "#/components/responses/FlowResponseGoneError"
+        429:
+          $ref: "#/components/responses/FlowResponseTooManyRequestsError"
+        500:
+          $ref: "#/components/responses/FlowResponseInternalServerError"
+  /token_exchange:
+    post:
+      tags:
+        - flow
+      description: |
+        Initialize or advance a token exchange flow. 
+        
+        This flow is only available if SAML is enabled.
+      summary: Token exchange
+      parameters:
+        - $ref: "#/components/parameters/ActionParam"
+        - $ref: "#/components/parameters/LanguageParam"
+      requestBody:
+        $ref: "#/components/requestBodies/TokenExchangeRequestBody"
+      responses:
+        200:
+          $ref: "#/components/responses/TokenExchangeFlowResponse"
+        400:
+          $ref: "#/components/responses/LoginFlowResponseBadRequestError"
+        401:
+          $ref: "#/components/responses/FlowResponseUnauthorizedError"
+        403:
+          $ref: "#/components/responses/FlowResponseForbiddenError"
+        429:
+          $ref: "#/components/responses/FlowResponseTooManyRequestsError"
+        500:
+          $ref: "#/components/responses/FlowResponseInternalServerError"
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: hanko
+    BearerTokenAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ActionParam:
+      in: query
+      name: action
+      description: |
+        String of the format `{action_name}@{flow_id}`. Indicates the action to perform on the flow with the 
+        given `flow_id`. Omitting the query parameter initializes a new flow.
+        
+        _Note for playground usage_: You can derive the value for this query parameter from the `action`'s `href` 
+        property in a flow state response, e.g. for an `href` value of 
+        `/login?action=register_client_capabilities%4015655672-41ca-48cc-afb1-90be77075764` the (non-URL-encoded) value
+        would be `register_client_capabilities@15655672-41ca-48cc-afb1-90be77075764`.
+      schema:
+        type: string
+        example: register_client_capabilities@15655672-41ca-48cc-afb1-90be77075764
+    LanguageParam:
+      in: header
+      name: X-Language
+      schema:
+        type: string
+        enum:
+          - bn
+          - de
+          - en
+          - fr
+          - it
+          - nl
+          - pt-BR
+          - zh
+      description: |
+        Used to internationalize outgoing emails (e.g. for email verification, recovery, etc.). 
+
+        If email delivery by Hanko is enabled the values for supported languages are: 
+          - "bn" (Bengali/Bangla)
+          - "de" (German) 
+          - "en" (English) 
+          - "fr" (French) 
+          - "it" (Italian) 
+          - "nl" (Dutch)
+          - "pt-BR" (Brazilian Portuguese), 
+          - "zh" (Chinese)
+        
+        If email delivery by Hanko is disabled and a webhook has been configured for the `email.send` event, the
+        JWT payload of the `token` contained in the response to the webhook endpoint contains a `language` claim that
+        reflects the value originally passed as the header value.
+  schemas:
+    Action:
+      description: Action
+      type: object
+      properties:
+        action:
+          description: The name of the action.
+          type: string
+        href:
+          description: The action target as a URL relative to the API tenant base URL.
+          type: string
+        description:
+          description: The description for the action.
+          type: string
+        inputs:
+          description: |
+            The inputs for the action. 
+            
+            An input indicates that when making a request to perform an action, the `input_data` value of the 
+            request body must contain a key with the given `name` value of the respective input. The corresponding 
+            value for that key is specified by the remaining properties of the input.
+          type: object
+    ActionAccountDelete:
+      description: |
+        Delete an account.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "account_delete"
+    ActionBack:
+      description: Go back to the previous state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "back"
+    ActionConnectThirdPartyOAuthProvider:
+      description: Connect a third-party OAuth provider.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "connect_thirdparty_oauth_provider"
+            inputs:
+              $ref: "#/components/schemas/InputsConnectThirdPartyOAuthProvider"
+    ActionContinueToLoginOTP:
+      description: Continue to the `login_otp` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_login_otp"
+    ActionContinueToLoginSecurityKey:
+      description: Continue to the `login_security_key` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_login_security_key"
+    ActionContinueToOTPSecretCreation:
+      description: Continue to the `mfa_otp_secret_creation` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_otp_secret_creation"
+    ActionContinueToPasscodeConfirmation:
+      description: Continue to the `passcode_confirmation` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_passcode_confirmation"
+    ActionContinueToPasscodeConfirmationRecovery:
+      description: Continue to the `passcode_confirmation` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_passcode_confirmation_recovery"
+    ActionContinueToPasskeyRegistration:
+      description: Continue to the `onboarding_create_passkey` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_passkey_registration"
+    ActionContinueToPasswordRegistration:
+      description: Continue to the `password_creation` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_password_registration"
+    ActionContinueToPasswordLogin:
+      description: Continue to the `login_password` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_password_login"
+    ActionContinueToSecurityKeyCreation:
+      description: Continue to the `mfa_security_key_creation` state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_to_security_key_creation"
+    ActionContinueWithLoginIdentifier:
+      description: Provide a login identifier (email or username).
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "continue_with_login_identifier"
+            inputs:
+              $ref: "#/components/schemas/InputsContinueWithLoginIdentifier"
+    ActionDisconnectThirdPartyOAuthProvider:
+      description: Disconnect a third-party OAuth provider.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "disconnect_thirdparty_oauth_provider"
+            inputs:
+              $ref: "#/components/schemas/InputsDisconnectThirdPartyOAuthProvider"
+    ActionEmailAddressSet:
+      description: Set an email address.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "email_address_set"
+            inputs:
+              $ref: "#/components/schemas/InputsEmailAddressSet"
+    ActionEmailCreate:
+      description: Add an email.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "email_create"
+            inputs:
+              $ref: "#/components/schemas/InputsEmailCreate"
+    ActionEmailDelete:
+      description: Delete an email.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "email_delete"
+            inputs:
+              $ref: "#/components/schemas/InputsEmailDelete"
+    ActionEmailSetPrimary:
+      description: Set an email as the primary email.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "email_set_primary"
+            inputs:
+              $ref: "#/components/schemas/InputsEmailSetPrimary"
+    ActionEmailVerify:
+      description: Verify an email.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "email_verify"
+            inputs:
+              $ref: "#/components/schemas/InputsEmailVerify"
+    ActionExchangeToken:
+      description: Exchange a one time token after a third party authentication for a session token.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "exchange_token"
+            inputs:
+              $ref: "#/components/schemas/InputsExchangeToken"
+    ActionRegisterClientCapabilities:
+      description: Provide information about whether the client is capable of using passkeys (a.k.a. the Webauthn API).
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "register_client_capabilities"
+            inputs:
+              $ref: "#/components/schemas/InputsRegisterClientCapabilities"
+    ActionRegisterLoginIdentifier:
+      description: Register an email or username.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "register_login_identifier"
+            inputs:
+              $ref: "#/components/schemas/InputsRegisterLoginIdentifier"
+    ActionRegisterPassword:
+      description: Register a password.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "register_password"
+            inputs:
+              $ref: "#/components/schemas/InputsRegisterPassword"
+    ActionResendPasscode:
+      description: Resend a passcode.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "resend_passcode"
+    ActionOTPCodeVerify:
+      description: Verify an OTP code to set up (T)OTP MFA.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "otp_code_verify"
+            inputs:
+              $ref: "#/components/schemas/InputsOTPCodeVerify"
+    ActionOTPCodeValidate:
+      description: Validate an OTP code for use as a second factor.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "otp_code_validate"
+            inputs:
+              $ref: "#/components/schemas/InputsOTPCodeVerify"
+    ActionPasswordCreate:
+      description: Create a password.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "password_create"
+            inputs:
+              $ref: "#/components/schemas/InputsPasswordCreate"
+    ActionOTPSecretDelete:
+      description: Delete an OTP secret.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "otp_secret_delete"
+    ActionPasswordDelete:
+      description: Delete a password.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "password_delete"
+    ActionPasswordUpdate:
+      description: Update a password.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "password_update"
+            inputs:
+              $ref: "#/components/schemas/InputsPasswordUpdate"
+    ActionPasswordLogin:
+      description: Authenticate with a password.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "password_login"
+            inputs:
+              $ref: "#/components/schemas/InputsPasswordLogin"
+    ActionPasswordRecovery:
+      description: Set up a new password as part of a recovery process.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "password_recovery"
+            inputs:
+              $ref: "#/components/schemas/InputsPasswordRecovery"
+    ActionPatchMetadata:
+      description: Patches the (unsafe) metadata of a user.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "patch_metadata"
+            inputs:
+              $ref: "#/components/schemas/InputsPatchMetadata"
+    ActionRememberMe:
+      description: |
+        This action determines whether a session cookie or a persistent cookie is issued on flow success. 
+        
+        - If the `remember_me` input is set to `true`, the flow response on flow success contains a `Set-Cookie` header
+        with a persistent cookie and an `X-Session-Retention` header with a `persistent` value.
+        - If the `remember_me` input is set to `false`, the flow response on flow success contains a `Set-Cookie` header
+        with a session cookie and an `X-Session-Retention` header with a `session` value.
+        
+        The action is only present if the tenant's cookie retention type is set to 'prompt'.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "remember_me"
+            inputs:
+              $ref: "#/components/schemas/InputsRememberMe"
+    ActionThirdPartyOauth:
+      description: |
+        Initialize a third party sign-up/sign-in by specifying the `provider` (it must be enabled and configured at the 
+        tenant) to use and the  URL to redirect to (`redirect_to`) after successful authentication with the provider. 
+
+        A `redirect_url` to the selected provider is placed in the `payload` of the next state (`thirdparty`).
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "thirdparty_oauth"
+            inputs:
+              $ref: "#/components/schemas/InputsThirdPartyOauth"
+    ActionUsernameDelete:
+      description: Delete a username.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "username_create"
+    ActionUsernameSet:
+      description: Set a username.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "username_set"
+            inputs:
+              $ref: "#/components/schemas/InputsUsernameSet"
+    ActionSecurityKeyCreate:
+      description: Create a security key.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "security_key_create"
+    ActionSecurityKeyDelete:
+      description: Delete a security key.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "security_key_delete"
+            inputs:
+              $ref: "#/components/schemas/InputsSecurityKeyDelete"
+    ActionSessionDelete:
+      description: Revoke a session.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "session_delete"
+            inputs:
+              $ref: "#/components/schemas/InputsSessionDelete"
+    ActionSkip:
+      description: Skip to the next state.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "skip"
+    ActionTrustDevice:
+      description: |
+        Execution of this action indicates that a user considers the device or browser used as trusted. As a 
+        result, MFA (if it is enabled and the user has registered an MFA credential) is skipped for subsequent logins. 
+        Trust persists until it explicitly expires and its expiry is not
+        extended on subsequent logins. Users must provide MFA again after expiry.
+        
+        Generates a random device token that is returned to the client in a `Set-Cookie` header on flow success.
+        The action is only present in the flow response if this Cookie is not set, i.e. if no trust has been granted 
+        or if the cookie has expired.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "trust_device"
+    ActionVerifyPasscode:
+      description: Verify a passcode.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "verify_passcode"
+            inputs:
+              $ref: "#/components/schemas/InputsVerifyPasscode"
+    ActionWebauthnCredentialCreate:
+      description: Generate passkey creation options for registering a passkey.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_credential_create"
+    ActionWebauthnCredentialDelete:
+      description: Delete a passkey.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_credential_delete"
+            inputs:
+              $ref: "#/components/schemas/InputsWebauthnCredentialDelete"
+    ActionWebauthnCredentialRename:
+      description: Rename a passkey.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_credential_rename"
+            inputs:
+              $ref: "#/components/schemas/InputsWebauthnCredentialRename"
+    ActionWebauthnGenerateCreationOptions:
+      description: Generate passkey creation options for registering a passkey.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_generate_creation_options"
+    ActionWebauthnGenerateRequestOptions:
+      description: Generate passkey request options for authenticating with a passkey.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_generate_request_options"
+    ActionWebauthnVerifyAssertionResponse:
+      description: Verify an assertion response to complete a passkey authentication.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_verify_assertion_response"
+            inputs:
+              $ref: "#/components/schemas/InputsWebauthnVerifyAssertionResponse"
+    ActionWebauthnVerifyAttestationResponse:
+      description: Verify an attestation response to complete a passkey registration.
+      allOf:
+        - $ref: "#/components/schemas/Action"
+        - type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_verify_assertion_response"
+            inputs:
+              $ref: "#/components/schemas/InputsWebauthnVerifyAttestationResponse"
+    Actions:
+      description: List of actions that can be performed in the current flow state in order to advance the flow to the next state.
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/Action"
+    ActionsDeviceTrust:
+      type: object
+      properties:
+        trust_device:
+          $ref: "#/components/schemas/ActionTrustDevice"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsCredentialOnboardingChooser:
+      type: object
+      properties:
+        continue_to_passkey_registration:
+          $ref: "#/components/schemas/ActionContinueToPasskeyRegistration"
+        continue_to_password_registration:
+          $ref: "#/components/schemas/ActionContinueToPasswordRegistration"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsLoginInit:
+      type: object
+      properties:
+        continue_with_login_identifier:
+          $ref: "#/components/schemas/ActionContinueWithLoginIdentifier"
+        webauthn_generate_request_options:
+          $ref: "#/components/schemas/ActionWebauthnGenerateRequestOptions"
+        webauthn_verify_assertion_response:
+          $ref: "#/components/schemas/ActionWebauthnVerifyAssertionResponse"
+        thirdparty_oauth:
+          $ref: "#/components/schemas/ActionThirdPartyOauth"
+        remember_me:
+          $ref: "#/components/schemas/ActionRememberMe"
+    ActionsLoginMethodChooser:
+      type: object
+      properties:
+        continue_to_password_login:
+          $ref: "#/components/schemas/ActionContinueToPasswordLogin"
+        continue_to_passcode_confirmation:
+          $ref: "#/components/schemas/ActionContinueToPasscodeConfirmation"
+    ActionsLoginPasskey:
+      type: object
+      properties:
+        webauthn_verify_assertion_response:
+          $ref: "#/components/schemas/ActionWebauthnVerifyAssertionResponse"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsLoginPassword:
+      type: object
+      properties:
+        password_login:
+          $ref: "#/components/schemas/ActionPasswordLogin"
+        continue_to_passcode_confirmation_recovery:
+          $ref: "#/components/schemas/ActionContinueToPasscodeConfirmationRecovery"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsLoginOTP:
+      type: object
+      properties:
+        otp_code_validate:
+          $ref: "#/components/schemas/ActionOTPCodeValidate"
+        continue_to_login_security_key:
+          $ref: "#/components/schemas/ActionContinueToLoginSecurityKey"
+    ActionsLoginSecurityKey:
+      type: object
+      properties:
+        webauthn_generate_request_options:
+          $ref: "#/components/schemas/ActionWebauthnGenerateRequestOptions"
+        continue_to_login_otp:
+          $ref: "#/components/schemas/ActionContinueToLoginOTP"
+    ActionsLoginPasswordRecovery:
+      type: object
+      properties:
+        password_recovery:
+          $ref: "#/components/schemas/ActionPasswordRecovery"
+    ActionsMFAMethodChooser:
+      type: object
+      properties:
+        back:
+          $ref: "#/components/schemas/ActionBack"
+        continue_to_otp_secret_creation:
+          $ref: "#/components/schemas/ActionContinueToOTPSecretCreation"
+        continue_to_security_key_creation:
+          $ref: "#/components/schemas/ActionContinueToSecurityKeyCreation"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+    ActionsMFAOTPSecretCreation:
+      type: object
+      properties:
+        otp_code_verify:
+          $ref: "#/components/schemas/ActionOTPCodeVerify"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsMFASecurityKeyCreation:
+      type: object
+      properties:
+        webauthn_generate_creation_options:
+          $ref: "#/components/schemas/ActionWebauthnGenerateCreationOptions"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsOnboardingCreatePasskey:
+      type: object
+      properties:
+        webauthn_generate_creation_options:
+          $ref: "#/components/schemas/ActionWebauthnGenerateCreationOptions"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsOnboardingEmail:
+      type: object
+      properties:
+        email_address_set:
+          $ref: "#/components/schemas/ActionEmailAddressSet"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+    ActionsOnboardingUsername:
+      type: object
+      properties:
+        username_set:
+          type: object
+          properties:
+            action:
+              enum:
+                - "username_set"
+            inputs:
+              $ref: "#/components/schemas/InputsUsernameSet"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+    ActionsOnboardingVerifyPasskeyAttestation:
+      type: object
+      properties:
+        webauthn_verify_attestation_response:
+          type: object
+          properties:
+            action:
+              enum:
+                - "webauthn_verify_attestation_response"
+            inputs:
+              $ref: "#/components/schemas/InputsWebauthnVerifyAttestationResponse"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsPasscodeConfirmation:
+      type: object
+      properties:
+        verify_passcode:
+          $ref: "#/components/schemas/ActionVerifyPasscode"
+        resend_passcode:
+          $ref: "#/components/schemas/ActionResendPasscode"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsPasswordCreation:
+      type: object
+      properties:
+        register_password:
+          $ref: "#/components/schemas/ActionRegisterPassword"
+        skip:
+          $ref: "#/components/schemas/ActionSkip"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsPreflight:
+      type: object
+      properties:
+        register_client_capabilities:
+          $ref: "#/components/schemas/ActionRegisterClientCapabilities"
+    ActionsProfileInit:
+      type: object
+      properties:
+        account_delete:
+          $ref: "#/components/schemas/ActionAccountDelete"
+        connect_thirdparty_oauth_provider:
+          $ref: "#/components/schemas/ActionConnectThirdPartyOAuthProvider"
+        continue_to_otp_secret_creation:
+          $ref: "#/components/schemas/ActionContinueToOTPSecretCreation"
+        disconnect_thirdparty_oauth_provider:
+          $ref: "#/components/schemas/ActionDisconnectThirdPartyOAuthProvider"
+        email_create:
+          $ref: "#/components/schemas/ActionEmailCreate"
+        email_delete:
+          $ref: "#/components/schemas/ActionEmailDelete"
+        email_set_primary:
+          $ref: "#/components/schemas/ActionEmailSetPrimary"
+        email_verify:
+          $ref: "#/components/schemas/ActionEmailVerify"
+        otp_secret_delete:
+          $ref: "#/components/schemas/ActionOTPSecretDelete"
+        password_create:
+          $ref: "#/components/schemas/ActionPasswordCreate"
+        password_update:
+          $ref: "#/components/schemas/ActionPasswordUpdate"
+        password_delete:
+          $ref: "#/components/schemas/ActionPasswordDelete"
+        patch_metadata:
+          $ref: "#/components/schemas/ActionPatchMetadata"
+        security_key_create:
+          $ref: "#/components/schemas/ActionSecurityKeyCreate"
+        security_key_delete:
+          $ref: "#/components/schemas/ActionSecurityKeyDelete"
+        session_delete:
+          $ref: "#/components/schemas/ActionSessionDelete"
+        username_set:
+          $ref: "#/components/schemas/ActionUsernameSet"
+        username_delete:
+          $ref: "#/components/schemas/ActionUsernameDelete"
+        webauthn_credential_rename:
+          $ref: "#/components/schemas/ActionWebauthnCredentialRename"
+        webauthn_credential_create:
+          $ref: "#/components/schemas/ActionWebauthnCredentialCreate"
+        webauthn_credential_delete:
+          $ref: "#/components/schemas/ActionWebauthnCredentialDelete"
+    ActionsRegistrationInit:
+      type: object
+      properties:
+        register_login_identifier:
+          $ref: "#/components/schemas/ActionRegisterLoginIdentifier"
+        thirdparty_oauth:
+          $ref: "#/components/schemas/ActionThirdPartyOauth"
+        remember_me:
+          $ref: "#/components/schemas/ActionRememberMe"
+    ActionsThirdParty:
+      type: object
+      properties:
+        exchange_token:
+          $ref: "#/components/schemas/ActionExchangeToken"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    ActionsWebauthnVerifyAttestationResponse:
+      description: ActionsWebauthnVerifyAttestationResponse
+      type: object
+      properties:
+        webauthn_verify_attestation_response:
+          $ref: "#/components/schemas/ActionWebauthnVerifyAttestationResponse"
+        back:
+          $ref: "#/components/schemas/ActionBack"
+    AnyValue:
+      description: Can be any value - string, number, boolean, array or object.
+    Claims:
+      description: Contains the claims of a user as they appear in the payload of session JWTs.
+      type: object
+      properties:
+        amr:
+          description: Authentication Method References, JSON array of strings that are identifiers for authentication methods used in the authentication.
+          type: array
+          items:
+            type: string
+            enum:
+              - pwd
+              - passkey
+              - otp
+              - ext:<provider>
+              - totp
+              - security_key
+            description: |
+              - `pwd` => password
+              - `passkey` => passkey
+              - `otp` => email passcode
+              - `ext:<provider>` => thirdparty provider, where <provider> is the internal provider ID, e.g. `ext:microsoft`
+              - `totp` => 2FA authenticator app
+              - `security_key` => 2FA security key
+        subject:
+          type: string
+          format: uuid4
+        issued_at:
+          type: string
+          format: date-time
+        audience:
+          type: array
+          items:
+            type: string
+        issuer:
+          type: string
+        email:
+          type: object
+          properties:
+            address:
+              type: string
+            is_verified:
+              type: boolean
+            is_primary:
+              type: boolean
+      additionalProperties:
+        description: "Any additional claims defined through templates for customizing the session JWT"
+    CSRFToken:
+      description: |
+        Not required on flow initialization, i.e. on requests without an `action`
+        query parameter.
+
+        Required on all other requests performing an action, i.e. on requests that use an `action` 
+        query parameter. Should be the `csrf_token` value from the most recent flow state response.
+      type: string
+      example: qvcZt29spXYO77Y9IaxxN4MzLnmbjozl
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        cause:
+          type: string
+    Input:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        required:
+          type: boolean
+        min_length:
+          type: integer
+        max_length:
+          type: integer
+        hidden:
+          type: boolean
+        value:
+          type: string
+        allowed_values:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                $ref: "#/components/schemas/AnyValue"
+    InputAssertionResponse:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "assertion_response"
+            type:
+              enum:
+                - "json"
+    InputCode:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "code"
+            type:
+              enum:
+                - "string"
+            min_length:
+              default: 6
+            max_length:
+              default: 6
+            required:
+              default: true
+            hidden:
+              default: false
+    InputEmail:
+      title: Email
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              type: string
+              enum:
+                - "email"
+            type:
+              type: string
+              enum:
+                - "email"
+            max_length:
+              default: 120
+            required:
+              default: true
+            hidden:
+              default: false
+    InputEmailId:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              type: string
+              enum:
+                - "email_id"
+            type:
+              type: string
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: true
+    InputIdentifier:
+      title: Identifier
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "identifier"
+            type:
+              enum:
+                - "string"
+            max_length:
+              type: integer
+              default: 255
+            required:
+              default: true
+            hidden:
+              default: false
+    InputNewPassword:
+      allOf:
+        - $ref: "#/components/schemas/InputPassword"
+        - type: object
+          properties:
+            name:
+              type: string
+              enum:
+                - "new_password"
+    InputOTPCode:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "otp_code"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: false
+    InputPassword:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "password"
+            type:
+              enum:
+                - "password"
+            min_length:
+              default: 8
+            required:
+              default: true
+            hidden:
+              default: false
+    InputPasskeyId:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "passkey_id"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: false
+    InputPasskeyName:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "passkey_name"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: false
+    InputPatchMetadata:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "patch_metadata"
+            type:
+              enum:
+                - "json"
+            required:
+              default: true
+            hidden:
+              default: false
+    InputProvider:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "provider"
+            type:
+              enum:
+                - "string"
+            value:
+              type: string
+            required:
+              default: true
+            hidden:
+              default: true
+            allowed_values:
+              items:
+                properties:
+                  name:
+                    description: A display name to use for the provider.
+                  value:
+                    $ref: "#/components/schemas/InputProviderAllowedValue"
+    InputProviderAllowedValue:
+      type: string
+      enum:
+        - apple
+        - discord
+        - facebook
+        - github
+        - google
+        - linkedin
+        - microsoft
+    InputPublicKey:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "public-key"
+            type:
+              enum:
+                - "json"
+            required:
+              default: true
+            hidden:
+              default: true
+    InputRedirectTo:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "redirect_to"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: true
+    InputCodeVerifier:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "code_verifier"
+            type:
+              enum:
+                - "string"
+            required:
+              default: false
+            hidden:
+              default: true
+    InputRememberMe:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "remember_me"
+            type:
+              enum:
+                - "boolean"
+            required:
+              default: true
+    InputSecurityKeyID:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "security_key_id"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: true
+    InputSessionID:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "session_id"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: true
+    InputToken:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "token"
+            type:
+              enum:
+                - "string"
+            required:
+              default: true
+            hidden:
+              default: true
+    InputUsername:
+      title: Username
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              enum:
+                - "username"
+            type:
+              enum:
+                - "string"
+            min_length:
+              type: number
+              enum:
+                - 3
+            max_length:
+              type: number
+              enum:
+                - 40
+            required:
+              default: false
+            hidden:
+              default: false
+    InputWebauthnAvailable:
+      description: |
+        Indicates whether the client the device is capable of creating and using passkeys/WebAuthn credentials.
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              type: string
+              enum:
+                - "webauthn_available"
+            type:
+              type: string
+              enum:
+                - "boolean"
+    InputWebauthnConditionalMediationAvailable:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              type: string
+              enum:
+                - "webauthn_conditional_mediation_available"
+            type:
+              type: string
+              enum:
+                - "boolean"
+    InputWebauthnPlatformAuthenticatorAvailable:
+      allOf:
+        - $ref: "#/components/schemas/Input"
+        - type: object
+          properties:
+            name:
+              type: string
+              enum:
+                - "webauthn_platform_authenticator_available"
+            type:
+              type: string
+              enum:
+                - "boolean"
+    InputDataExchangeToken:
+      title: ExchangeToken
+      description: Input data for the `exchange_token` action.
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+      additionalProperties: false
+    InputDataEmailAddressSet:
+      title: EmailAddressSet
+      description: Input data for the `email_address_set` action.
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+      additionalProperties: false
+    InputDataEmailCreate:
+      title: EmailCreate
+      description: Input data for the `email_create` action.
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - emai
+      additionalProperties: false
+    InputDataEmailDelete:
+      title: EmailDelete
+      description: Input data for the `email_delete` action.
+      type: object
+      properties:
+        email_id:
+          type: string
+          format: email
+      required:
+        - email_id
+      additionalProperties: false
+    InputDataEmailSetPrimary:
+      title: EmailSetPrimary
+      description: Input data for the `email_set_primary` action.
+      type: object
+      properties:
+        email_id:
+          type: string
+          format: email
+      required:
+        - email_id
+      additionalProperties: false
+    InputDataEmailVerify:
+      title: EmailVerify
+      description: Input data for the `email_verify` action.
+      type: object
+      properties:
+        email_id:
+          type: string
+          format: email
+      required:
+        - email_id
+      additionalProperties: false
+    InputDataPasswordCreate:
+      title: PasswordCreate
+      description: Input data for the `password_create` action.
+      type: object
+      properties:
+        password:
+          type: string
+          format: email
+      required:
+        - email_id
+      additionalProperties: false
+    InputDataPasswordUpdate:
+      title: PasswordUpdate
+      description: Input data for the `password_update` action.
+      type: object
+      properties:
+        password:
+          type: string
+          format: email
+      required:
+        - email_id
+      additionalProperties: false
+    InputDataPatchMetadata:
+      title: PatchMetadata
+      description: Input data for the `patch_metadata` action.
+      type: object
+      properties:
+        patch_metadata:
+          type: object
+          description: |
+            Must be one of:
+              - `null`: unsets the entire (unsafe) metadata 
+              - an empty object `{}`: indicates an empty patch object, results in a noop
+              - a non-empty object: the current (unsafe) metadata is merged with this patch
+          additionalProperties: true
+      required:
+        - patch_metadata
+      additionalProperties: false
+    InputDataRegisterClientCapabilities:
+      title: RegisterClientCapabilities
+      description: Input data for the `register_client_capabilities` action.
+      type: object
+      properties:
+        webauthn_available:
+          type: boolean
+          default: false
+        webauthn_conditional_mediation_available:
+          type: boolean
+          default: false
+        webauthn_platform_authenticator_available:
+          type: boolean
+          default: false
+      required:
+        - webauthn_available
+      additionalProperties: false
+    InputDataConnectThirdPartyOAuthProvider:
+      title: ConnectThirdPartyOAuthProvider
+      description: Input data for the `connect_thirdparty_oauth_provider` action.
+      type: object
+      properties:
+        provider:
+          type: string
+          description: The third-party OAuth provider to connect.
+        redirect_to:
+          type: string
+          description: URL to redirect to after authentication with the provider.
+        code_verifier:
+          type: string
+          description: The code verifier for a PKCE OAuth flow.
+      required:
+        - provider
+        - redirect_to
+      additionalProperties: false
+    InputDataDisconnectThirdPartyOAuthProvider:
+      title: DisconnectThirdPartyOAuthProvider
+      description: Input data for the `disconnect_thirdparty_oauth_provider` action.
+      type: object
+      properties:
+        identity_id:
+          type: string
+          format: uuid4
+          description: The ID of the third party identity to remove.
+      required:
+        - identity_id
+      additionalProperties: false
+    InputDataContinueWithLoginIdentifier:
+      description: Input data for the `continue_with_login_identifier` action.
+      oneOf:
+        - type: object
+          title: ContinueWithLoginIdentifier
+          properties:
+            identifier:
+              description: Present only if emails and usernames are enabled.
+              type: string
+          required:
+            - identifier
+        - type: object
+          title: ContinueWithLoginIdentifierEmail
+          properties:
+            email:
+              type: string
+              format: email
+          required:
+            - email
+        - type: object
+          title: ContinueWithLoginIdentifierUsername
+          properties:
+            username:
+              type: string
+          required:
+            - username
+      minProperties: 1
+    InputDataOTPCodeValidate:
+      allOf:
+        - $ref: "#/components/schemas/InputDataOTPCodeVerify"
+        - title: OTPCodeValidate
+        - description: Input data for the `otp_code_validate` action.
+    InputDataOTPCodeVerify:
+      title: OTPCodeVerify
+      description: Input data for the `otp_code_verify` action.
+      type: object
+      properties:
+        otp_code:
+          description: |
+          type: string
+          minLength: 6
+          maxLength: 6
+      required:
+        - otp_code
+      additionalProperties: false
+    InputDataPasswordLogin:
+      title: PasswordLogin
+      description: Input data for the `password_login` action.
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+      additionalProperties: false
+    InputDataPasswordRecovery:
+      title: PasswordRecovery
+      description: Input data for the `password_recovery` action.
+      type: object
+      properties:
+        new_password:
+          type: string
+      required:
+        - new_password
+      additionalProperties: false
+    InputDataRegisterLoginIdentifier:
+      title: RegisterLoginIdentifier
+      description: Input data for the `register_login_identifier` action.
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+      additionalProperties: false
+      minProperties: 1
+    InputDataRememberMe:
+      description: Input data for the `remember_me` action.
+      title: RememberMe
+      type: object
+      properties:
+        remember_me:
+          type: boolean
+      required:
+        - remember_me
+      additionalProperties: false
+    InputDataRegisterPassword:
+      description: Input data for the `register_password` action.
+      title: RegisterPassword
+      type: object
+      properties:
+        new_password:
+          type: string
+      required:
+        - new_password
+      additionalProperties: false
+    InputDataSecurityKeyDelete:
+      title: SecurityKeyDelete
+      description: Input data for the `security_key_delete` action.
+      type: object
+      properties:
+        security_key_id:
+          type: string
+      required:
+        - security_key_id
+      additionalProperties: false
+    InputDataSessionDelete:
+      title: SessionDelete
+      description: Input data for the `session_delete` action.
+      type: object
+      properties:
+        session_id:
+          description: |
+            The ID of the session to revoke. 
+            
+            If server-side sessions are enabled, session IDs can be obtained from
+            session tokens (JWTs) through their `session_id` claim.
+          type: string
+          format: uuid4
+      required:
+        - session_id
+      additionalProperties: false
+    InputDataThirdPartyOauth:
+      title: ThirdPartyOauth
+      description: Input data for the `thirdparty_oauth` action.
+      type: object
+      properties:
+        provider:
+          $ref: "#/components/schemas/InputProviderAllowedValue"
+        redirect_to:
+          type: string
+          format: uri
+        code_verifier:
+          type: string
+      required:
+        - provider
+        - redirect_to
+      additionalProperties: false
+    InputDataUsernameSet:
+      title: UsernameSet
+      description: Input data for the `username_set` action.
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - provider
+      additionalProperties: false
+    InputDataWebauthnCredentialDelete:
+      title: WebauthnCredentialDelete
+      description: Input data for the `webauthn_credential_delete` action.
+      type: object
+      properties:
+        passkey_id:
+          type: string
+      required:
+        - passkey_id
+      additionalProperties: false
+    InputDataWebauthnCredentialRename:
+      title: WebauthnCredentialRename
+      description: Input data for the `webauthn_credential_rename` action.
+      type: object
+      properties:
+        passkey_id:
+          type: string
+        passkey_name:
+          type: string
+      required:
+        - passkey_id
+        - passkey_name
+      additionalProperties: false
+    InputDataWebauthnVerifyAssertionResponse:
+      title: WebauthnVerifyAssertionResponse
+      description: Input data for the `webauthn_verify_assertion_response` action.
+      type: object
+      properties:
+        assertion_response:
+          description: |
+            The [AuthenticatorAssertionResponse](https://developer.mozilla.org/en-US/docs/Web/API/AuthenticatorAssertionResponse)
+            from the WebAuthn API.
+          type: object
+      required:
+        - assertion_response
+      additionalProperties: false
+    InputDataWebauthnVerifyAttestationResponse:
+      title: WebauthnVerifyAttestationResponse
+      description: Input data for the `webauthn_verify_attestation_response` action.
+      type: object
+      properties:
+        public_key:
+          description: |
+            The [AuthenticatorAttestationResponse](https://developer.mozilla.org/en-US/docs/Web/API/AuthenticatorAttestationResponse)
+            from the WebAuthn API.
+          type: object
+      required:
+        - public_key
+      additionalProperties: false
+    InputDataVerifyPasscode:
+      title: VerifyPasscode
+      description: Input data for the `verify_passcode` action.
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+      required:
+        - code
+      additionalProperties: false
+    Inputs:
+      description: Inputs
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/Input"
+    InputsConnectThirdPartyOAuthProvider:
+      $ref: "#/components/schemas/InputsThirdPartyOauth"
+    InputsContinueWithLoginIdentifier:
+      type: object
+      properties:
+        identifier:
+          oneOf:
+            - $ref: "#/components/schemas/InputIdentifier"
+            - $ref: "#/components/schemas/InputEmail"
+            - $ref: "#/components/schemas/InputUsername"
+          discriminator:
+            propertyName: name
+    InputsDisconnectThirdPartyOAuthProvider:
+      type: object
+      properties:
+        identity_id:
+          type: string
+          format: uuid4
+          description: The ID of the third party identity to remove.
+    InputsEmailAddressSet:
+      type: object
+      properties:
+        email:
+          $ref: "#/components/schemas/InputEmail"
+    InputsEmailCreate:
+      type: object
+      properties:
+        email:
+          $ref: "#/components/schemas/InputEmail"
+    InputsEmailDelete:
+      type: object
+      properties:
+        email_id:
+          $ref: "#/components/schemas/InputEmailId"
+    InputsEmailSetPrimary:
+      type: object
+      properties:
+        email_id:
+          $ref: "#/components/schemas/InputEmailId"
+    InputsEmailVerify:
+      type: object
+      properties:
+        email_id:
+          $ref: "#/components/schemas/InputEmailId"
+    InputsExchangeToken:
+      type: object
+      properties:
+        token:
+          $ref: "#/components/schemas/InputToken"
+    InputsOnboardingVerifyPasskeyAttestation:
+      type: object
+      properties:
+        public_key:
+          $ref: "#/components/schemas/InputWebauthnAvailable"
+      required:
+        - public_key
+    InputsOTPCodeVerify:
+      type: object
+      properties:
+        otp_code:
+          $ref: "#/components/schemas/InputOTPCode"
+      required:
+        - otp_code
+    InputsOTPCodeValidate:
+      $ref: "#/components/schemas/InputsOTPCodeVerify"
+    InputsPasswordCreate:
+      type: object
+      properties:
+        password:
+          $ref: "#/components/schemas/InputPassword"
+    InputsPasswordLogin:
+      type: object
+      properties:
+        password:
+          $ref: "#/components/schemas/InputPassword"
+      required:
+        - password
+    InputsPasswordRecovery:
+      type: object
+      properties:
+        new_password:
+          $ref: "#/components/schemas/InputNewPassword"
+    InputsPasswordUpdate:
+      type: object
+      properties:
+        password:
+          $ref: "#/components/schemas/InputPassword"
+    InputsPatchMetadata:
+      type: object
+      properties:
+        patch_metadata:
+          $ref: "#/components/schemas/InputPatchMetadata"
+    InputsRegisterClientCapabilities:
+      type: object
+      properties:
+        webauthn_available:
+          $ref: "#/components/schemas/InputWebauthnAvailable"
+        webauthn_conditional_mediation_available:
+          $ref: "#/components/schemas/InputWebauthnConditionalMediationAvailable"
+        webauthn_platform_authenticator_available:
+          $ref: "#/components/schemas/InputWebauthnPlatformAuthenticatorAvailable"
+      required:
+        - webauthn_available
+    InputsRegisterLoginIdentifier:
+      type: object
+      minProperties: 1
+      properties:
+        email:
+          $ref: "#/components/schemas/InputEmail"
+        username:
+          $ref: "#/components/schemas/InputUsername"
+    InputsRegisterPassword:
+      type: object
+      properties:
+        new_password:
+          $ref: "#/components/schemas/InputNewPassword"
+    InputsRememberMe:
+      type: object
+      properties:
+        remember_me:
+          $ref: "#/components/schemas/InputRememberMe"
+    InputsSecurityKeyDelete:
+      type: object
+      properties:
+        security_key_id:
+          $ref: "#/components/schemas/InputSecurityKeyID"
+    InputsSessionDelete:
+      type: object
+      properties:
+        session_id:
+          $ref: "#/components/schemas/InputSessionID"
+    InputsThirdPartyOauth:
+      type: object
+      properties:
+        provider:
+          $ref: "#/components/schemas/InputProvider"
+        redirect_to:
+          $ref: "#/components/schemas/InputRedirectTo"
+        code_verifier:
+          $ref: "#/components/schemas/InputCodeVerifier"
+      required:
+        - provider
+        - redirect_to
+    InputsUsernameSet:
+      type: object
+      properties:
+        username:
+          $ref: "#/components/schemas/InputUsername"
+      required:
+        - username
+    InputsVerifyPasscode:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/InputCode"
+      required:
+        - code
+    InputsWebauthnCredentialDelete:
+      type: object
+      properties:
+        passkey_id:
+          $ref: "#/components/schemas/InputPasskeyId"
+      required:
+        - passkey_id
+    InputsWebauthnCredentialRename:
+      type: object
+      properties:
+        passkey_id:
+          $ref: "#/components/schemas/InputPasskeyId"
+        passkey_name:
+          $ref: "#/components/schemas/InputPasskeyName"
+      required:
+        - passkey_id
+        - passkey_name
+    InputsWebauthnVerifyAssertionResponse:
+      type: object
+      properties:
+        assertion_response:
+          $ref: "#/components/schemas/InputAssertionResponse"
+      required:
+        - assertion_response
+    InputsWebauthnVerifyAttestationResponse:
+      type: object
+      properties:
+        public_key:
+          $ref: "#/components/schemas/InputPublicKey"
+      required:
+        - public_key
+    InputsUsernameAddressSet:
+      type: object
+      properties:
+        email:
+          $ref: "#/components/schemas/InputUsername"
+    LastLogin:
+      description: Contains data about the last login and MFA methods used by the user.
+      type: object
+      properties:
+        login_method:
+          description: The login method used.
+          type: string
+          enum:
+            - password
+            - passkey
+            - passcode
+            - third_party
+        mfa_method:
+          description: The MFA method used.
+          type: string
+          enum:
+            - totp
+            - security_key
+        third_party_provider:
+          description: Contains the name of the third party provider used if `login_method` is `third_party`.
+          type: string
+    Link:
+      type: object
+      properties:
+        name:
+          description: The name of the link.
+          type: string
+        href:
+          description: The destination of the link.
+          type: string
+          format: uri
+        category:
+          description: The category of the link.
+          type: string
+        target:
+          description: The target of the link.
+          type: string
+          enum:
+            - _self
+            - _blank
+            - _parent
+            - _top
+    Payload:
+      description: |
+        Additional data that can be used by the client (e.g `user` data provided in the
+        profile flow) or should/must be used as intermediary data in an out of band process to produce input data 
+        for advancing the flow (e.g. the WebAuthn credential request/creation options that must be passed to the 
+        Webauthn API to produce an assertion/attestation).
+      type: object
+      additionalProperties: true
+    PayloadCreationOptions:
+      type: object
+      properties:
+        creation_options:
+          $ref: "#/components/schemas/CredentialCreationOptions"
+      required:
+        - creation_options
+    PayloadProfileData:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/ProfileDataUser"
+    PayloadRequestOptions:
+      type: object
+      properties:
+        request_options:
+          $ref: "#/components/schemas/CredentialRequestOptions"
+      required:
+        - request_options
+    PayloadResendAfter:
+      description: Returned with a flow response when the request rate limit was exceeded.
+      type: object
+      properties:
+        resend_after:
+          description: |
+            Indicates the amount of seconds required to pass in order to be able to send another request.
+          type: integer
+          example: 60
+    PayloadThirdParty:
+      type: object
+      properties:
+        redirect_url:
+          type: string
+          format: uri
+      required:
+        - redirect_url
+    ProfileDataSessions:
+      description: List of active sessions for this user.
+      type: array
+      items:
+        type: object
+        properties:
+          created_at:
+            description: Time of creation of the session.
+            type: string
+            format: date-time
+          current:
+            description: Indicates whether this session is the session currently used.
+            type: boolean
+          expires_at:
+            description: Time of expiry of the session.
+            type: string
+            format: date-time
+          id:
+            description: The ID of the session.
+            type: string
+            format: uuid
+          ip_address:
+            oneOf:
+              - description: IPv4 address the session was initialized from.
+                type: string
+                format: ipv4
+              - description: IPv6 address the session was initialized from.
+                type: string
+                format: ipv6
+          last_used:
+            description: Time of last usage of this session.
+            type: string
+            format: date-time
+          user_agent:
+            description: |
+              User agent string consisting of the native platform that the browser is running on (Windows, Mac, 
+              Linux, Android, etc.) and a parenthesised name of the user agent.
+            type: string
+          user_agent_raw:
+            description: |
+              The complete user agent, i.e. the exact value of the `User-Agent` header the API received
+              in the request(s) for establishing the session.
+            type: string
+    ProfileDataUser:
+      description: Data pertaining to the user associated with the current session.
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        passkeys:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebauthnCredential"
+        security_keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebauthnCredential"
+        emails:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              address:
+                type: string
+                format: email
+              is_primary:
+                type: boolean
+              is_verified:
+                type: boolean
+              identity:
+                deprecated: true
+                description: Deprecated. See `identities` instead.
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Contains the ID of the user at the provider.
+                  provider:
+                    type: string
+                    description: |
+                      Contains the display name of the provider, if available. Otherwise contains the provider ID.
+              identities:
+                deprecated: true
+                description: Deprecated. See top-level `identities` instead.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: ID of the user at the provider
+                    provider:
+                      type: string
+                      description: |
+                        Contains the display name of the provider, if available. Otherwise contains the provider ID.
+        identities:
+          description: The user's third party connections/identities.
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: The ID of the user at the provider
+              identity_id:
+                type: string
+                description: The identity's ID
+                format: uuid4
+              provider:
+                type: string
+                description: |
+                  Contains the display name of the provider, if available. Otherwise contains the provider ID.
+        metadata:
+          type: object
+          properties:
+            public_metadata:
+              type: object
+              additionalProperties: {}
+            unsafe_metadata:
+              type: object
+              additionalProperties: {}
+        mfa_config:
+          type: object
+          properties:
+            auth_app_set_up:
+              type: boolean
+              description: Indicates whether the user has set up an authenticator app for 2FA.
+            totp_enabled:
+              type: boolean
+              description: |
+                Indicates whether 2FA via authenticator app is enabled on this tenant. 
+                
+                To check whether a user has set up an authenticator app for 2FA, see [`payload.user.mfa_config.app_auth_set_up`](#response-one-of-1-payload-user-mfa-config-app-auth-set-up).
+            security_keys_enabled:
+              type: boolean
+              description: |
+                Indicates whether 2FA via security keys is enabled on this tenant.
+                
+                To check whether a user has enrolled security keys for 2FA, see [`payload.user.security_keys`](#response-one-of-1-payload-user-security-keys).
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        picture:
+          type: string
+          format: uri
+    RequestInputData:
+      description: |
+        The actual properties of the `input_data` is determined by the `inputs` of the `action` to be performed.
+        
+        All requests that perform an `action` (i.e. requests other than flow initialization) must include 
+        the `csrf_token` from the previous flow state response in the `input_data`.
+      type: object
+      additionalProperties: true
+    StateBase:
+      type: object
+      properties:
+        actions:
+          description: |
+            List of actions that can be performed in the current flow state in order to advance the flow to the next 
+            state.
+            
+            Depending on user details (e.g. presence or absence of credentials) or the tenant's configuration 
+            some actions may or may not be present in the response.
+          type: object
+        name:
+          description: The name of the flow state.
+          type: string
+        payload:
+          description: |
+            Additional data that can be used by the client (e.g. `user` or `sessions` data provided in the
+            profile flow) or should/must be used as intermediary data in an out of band process to produce input data 
+            for advancing the flow (e.g. the WebAuthn credential request/creation options that must be passed to the 
+            Webauthn API to produce an assertion/attestation).
+          type: object
+        status:
+          description: The HTTP response status code for this flow response.
+          type: integer
+        csrf_token:
+          description: Token to prevent Cross-Site Request Forgeries.
+          type: string
+          example: HvUwWSfPgz7VnwiS8VMDpnhZ1wNwTNiV
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+          nullable: true
+          example: []
+    StateDeviceTrust:
+      title: DeviceTrust
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - type: object
+          properties:
+            actions:
+              $ref: "#/components/schemas/ActionsDeviceTrust"
+            name:
+              type: string
+              enum:
+                - "device_trust"
+    StateLoginInit:
+      title: LoginInit
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - type: object
+          properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginInit"
+            name:
+              type: string
+              enum:
+                - "login_init"
+            payload:
+              $ref: "#/components/schemas/PayloadRequestOptions"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateLoginMethodChooser:
+      title: LoginMethodChooser
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginMethodChooser"
+            name:
+              type: string
+              enum:
+                - "login_method_chooser"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateLoginOTP:
+      title: LoginOTP
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginOTP"
+            name:
+              type: string
+              enum:
+                - "login_otp"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateLoginPasskey:
+      title: LoginPasskey
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginPasskey"
+            name:
+              type: string
+              enum:
+                - "login_passkey"
+            payload:
+              $ref: "#/components/schemas/PayloadRequestOptions"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateLoginPassword:
+      title: LoginPassword
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginPassword"
+            name:
+              type: string
+              enum:
+                - "login_password"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateLoginPasswordRecovery:
+      title: LoginPasswordRecovery
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginPasswordRecovery"
+            name:
+              type: string
+              enum:
+                - "login_password_recovery"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateLoginSecurityKey:
+      title: LoginSecurityKey
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsLoginSecurityKey"
+            name:
+              type: string
+              enum:
+                - "login_security_key"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateMFAMethodChooser:
+      title: MFAMethodChooser
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsMFAMethodChooser"
+            name:
+              type: string
+              enum:
+                - "mfa_method_chooser"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateMFAOTPSecretCreation:
+      title: MFAOTPSecretCreation
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsMFAOTPSecretCreation"
+            name:
+              type: string
+              enum:
+                - "mfa_otp_secret_creation"
+            payload:
+              type: object
+              properties:
+                otp_image_source:
+                  description: |
+                    Contains a QR code to scan with an authenticator app as a string in 
+                    ["data" URL](https://datatracker.ietf.org/doc/html/rfc2397) format. Can be directly
+                    used as the value for the `src` attribute in an HTML `img` element.
+                  type: string
+                otp_secret:
+                  description: |
+                    Shared secret that can be provided to authenticator apps if scanning
+                    a QR code is not available.
+                  type: string
+            status:
+              type: integer
+              enum:
+                - 200
+    StateMFASecurityKeyCreation:
+      title: MFASecurityKeyCreation
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsMFASecurityKeyCreation"
+            name:
+              type: string
+              enum:
+                - "mfa_security_key_creation"
+            status:
+              type: integer
+              enum:
+                - 200
+    StatePreflight:
+      title: Preflight
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsPreflight"
+            name:
+              type: string
+              enum:
+                - preflight
+            status:
+              type: integer
+              enum:
+                - 200
+    StateRegistrationInit:
+      description: Represents the initial state of a registration flow.
+      title: RegistrationInit
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsRegistrationInit"
+            name:
+              type: string
+              enum:
+                - "registration_init"
+            status:
+              type: integer
+              enum:
+                - 200
+    StatePasscodeConfirmation:
+      title: PasscodeConfirmation
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsPasscodeConfirmation"
+            name:
+              type: string
+              enum:
+                - "passcode_confirmation"
+            status:
+              type: integer
+              enum:
+                - 200
+    StatePasswordCreation:
+      title: PasswordCreation
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsPasswordCreation"
+            name:
+              type: string
+              enum:
+                - "password_creation"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateProfileAccountDeleted:
+      title: ProfileAccountDeleted
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              type: object
+            name:
+              type: string
+              enum:
+                - "account_deleted"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateProfileInit:
+      title: ProfileInit
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsProfileInit"
+            name:
+              type: string
+              enum:
+                - "profile_init"
+            payload:
+              allOf:
+                - $ref: "#/components/schemas/PayloadProfileData"
+                - type: object
+                  properties:
+                    sessions:
+                      $ref: "#/components/schemas/ProfileDataSessions"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateProfileWebauthnCredentialVerification:
+      title: ProfileWebauthnCredentialVerification
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsWebauthnVerifyAttestationResponse"
+            name:
+              type: string
+              enum:
+                - "webauthn_credential_verification"
+            payload:
+              $ref: "#/components/schemas/PayloadCreationOptions"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateCredentialOnboardingChooser:
+      title: CredentialOnboardingChooser
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsCredentialOnboardingChooser"
+            name:
+              type: string
+              enum:
+                - "credential_onboarding_chooser"
+            payload:
+              type: object
+            status:
+              type: integer
+              enum:
+                - 200
+    StateOnboardingCreatePasskey:
+      title: OnboardingCreatePasskey
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsOnboardingCreatePasskey"
+            name:
+              type: string
+              enum:
+                - "onboarding_create_passkey"
+            payload:
+              type: object
+            status:
+              type: integer
+              enum:
+                - 200
+    StateOnboardingVerifyPasskeyAttestation:
+      title: OnboardingVerifyPasskeyAttestation
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsOnboardingVerifyPasskeyAttestation"
+            name:
+              type: string
+              enum:
+                - "onboarding_verify_passkey_attestation"
+            payload:
+              $ref: "#/components/schemas/PayloadCreationOptions"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateOnboardingEmail:
+      title: OnboardingEmail
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsOnboardingEmail"
+            name:
+              type: string
+              enum:
+                - "onboarding_email"
+            payload:
+              type: object
+            status:
+              type: integer
+              enum:
+                - 200
+    StateOnboardingUsername:
+      title: OnboardingUsername
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsOnboardingUsername"
+            name:
+              type: string
+              enum:
+                - "onboarding_username"
+            payload:
+              type: object
+            status:
+              type: integer
+              enum:
+                - 200
+    StateSuccess:
+      title: Success
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            name:
+              type: string
+              enum:
+                - "success"
+            payload:
+              $ref: "#/components/schemas/PayloadProfileData"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateSuccessLogin:
+      title: Success
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateSuccess"
+        - type: object
+          properties:
+            payload:
+              allOf:
+                - $ref: "#/components/schemas/PayloadProfileData"
+                - type: object
+                  properties:
+                    last_login:
+                      $ref: "#/components/schemas/LastLogin"
+                    claims:
+                      $ref: "#/components/schemas/Claims"
+    StateSuccessRegistration:
+      title: Success
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateSuccess"
+        - type: object
+          properties:
+            payload:
+              allOf:
+                - $ref: "#/components/schemas/PayloadProfileData"
+                - type: object
+                  properties:
+                    claims:
+                      $ref: "#/components/schemas/Claims"
+    StateSuccessTokenExchange:
+      title: Success
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateSuccess"
+        - type: object
+          properties:
+            payload:
+              allOf:
+                - $ref: "#/components/schemas/PayloadProfileData"
+                - type: object
+                  properties:
+                    claims:
+                      $ref: "#/components/schemas/Claims"
+    StateThirdParty:
+      title: ThirdParty
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            actions:
+              $ref: "#/components/schemas/ActionsThirdParty"
+            name:
+              type: string
+              enum:
+                - "thirdparty"
+            payload:
+              $ref: "#/components/schemas/PayloadThirdParty"
+            status:
+              type: integer
+              enum:
+                - 200
+    StateError:
+      title: Error
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/StateBase"
+        - properties:
+            name:
+              type: string
+              enum:
+                - "error"
+            payload:
+              type: object
+            status:
+              type: integer
+    CredentialCreationOptions:
+      description: "Options for credential creation with the WebAuthn API"
+      externalDocs:
+        url: https://www.w3.org/TR/webauthn-2/#dictionary-makecredentialoptions
+      type: object
+      properties:
+        publicKey:
+          type: object
+          properties:
+            rp:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Hanko Authentication Service
+                id:
+                  type: string
+                  example: localhost
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: pPQT9rwJRD7gVncsnCDNyN
+                name:
+                  type: string
+                  example: user@example.com
+                displayName:
+                  type: string
+                  example: user@example.com
+            challenge:
+              type: string
+              format: base64url
+              example: 7qmkJUXR0dOFnsW48evX3qKdCzlGjvvqAAvMDN+KTN0=
+            pubKeyCredParams:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - public-key
+                  alg:
+                    type: number
+              example:
+                - type: public-key
+                  alg: -7
+            timeout:
+              type: number
+              format: int64
+              example: 60000
+            authenticatorSelection:
+              type: object
+              properties:
+                authenticatorAttachment:
+                  type: string
+                  enum:
+                    - platform
+                    - cross-platform
+                  example: platform
+                requireResidentKey:
+                  type: boolean
+                  example: true
+                residentKey:
+                  type: string
+                  enum:
+                    - discouraged
+                    - preferred
+                    - required
+                  example: preferred
+                userVerification:
+                  type: string
+                  enum:
+                    - discouraged
+                    - preferred
+                    - required
+                  example: required
+            attestation:
+              type: string
+              enum:
+                - none
+                - indirect
+                - direct
+                - enterprise
+              example: none
+    CredentialRequestOptions:
+      description: "Options for assertion generation with the WebAuthn API"
+      externalDocs:
+        url: https://www.w3.org/TR/webauthn-2/#dictionary-assertion-options
+      type: object
+      properties:
+        publicKey:
+          type: object
+          properties:
+            challenge:
+              type: string
+              format: base64url
+              example: qgOI+0KpGnl9NOqaT6dfsYvi96R87LgpErnvePeOgSU=
+            timeout:
+              type: number
+              format: int64
+              example: 60000
+            rpId:
+              type: string
+              example: localhost
+            allowCredentials:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - public-key
+                    example: public-key
+                  id:
+                    type: string
+                    format: base64url
+                    example: Mepptysj5ZZrTlg0qiLbsZ068OtQMeGVAikVy2n1hvvG...
+            userVerification:
+              type: string
+              enum:
+                - required
+                - preferred
+                - discouraged
+              example: required
+    StatesLogin:
+      oneOf:
+        - $ref: "#/components/schemas/StatePreflight"
+        - $ref: "#/components/schemas/StateLoginInit"
+        - $ref: "#/components/schemas/StateLoginPasskey"
+        - $ref: "#/components/schemas/StateLoginPassword"
+        - $ref: "#/components/schemas/StateLoginPasswordRecovery"
+        - $ref: "#/components/schemas/StateLoginMethodChooser"
+        - $ref: "#/components/schemas/StateLoginOTP"
+        - $ref: "#/components/schemas/StateLoginSecurityKey"
+        - $ref: "#/components/schemas/StateMFAMethodChooser"
+        - $ref: "#/components/schemas/StateMFAOTPSecretCreation"
+        - $ref: "#/components/schemas/StateMFASecurityKeyCreation"
+        - $ref: "#/components/schemas/StatePasscodeConfirmation"
+        - $ref: "#/components/schemas/StatePasswordCreation"
+        - $ref: "#/components/schemas/StateOnboardingEmail"
+        - $ref: "#/components/schemas/StateOnboardingUsername"
+        - $ref: "#/components/schemas/StateCredentialOnboardingChooser"
+        - $ref: "#/components/schemas/StateOnboardingCreatePasskey"
+        - $ref: "#/components/schemas/StateOnboardingVerifyPasskeyAttestation"
+        - $ref: "#/components/schemas/StateDeviceTrust"
+        - $ref: "#/components/schemas/StateThirdParty"
+        - $ref: "#/components/schemas/StateSuccessLogin"
+      discriminator:
+        propertyName: name
+        mapping:
+          preflight: "#/components/schemas/StatePreflight"
+          login_init: "#/components/schemas/StateLoginInit"
+          login_method_chooser: "#/components/schemas/StateLoginMethodChooser"
+          login_otp: "#/components/schemas/StateLoginOTP"
+          login_passkey: "#/components/schemas/StateLoginPasskey"
+          login_password: "#/components/schemas/StateLoginPassword"
+          login_password_recovery: "#/components/schemas/StateLoginPasswordRecovery"
+          login_security_key: "#/components/schemas/StateLoginSecurityKey"
+          passcode_confirmation: "#/components/schemas/StatePasscodeConfirmation"
+          password_creation: "#/components/schemas/StatePasswordCreation"
+          mfa_method_chooser: "#/components/schemas/StateMFAMethodChooser"
+          mfa_otp_secret_creation: "#/components/schemas/StateMFAOTPSecretCreation"
+          mfa_security_key_creation: "#/components/schemas/StateMFASecurityKeyCreation"
+          onboarding_email: "#/components/schemas/StateOnboardingEmail"
+          onboarding_username: "#/components/schemas/StateOnboardingUsername"
+          credential_onboarding_chooser: "#/components/schemas/StateCredentialOnboardingChooser"
+          onboarding_create_passkey: "#/components/schemas/StateOnboardingCreatePasskey"
+          onboarding_verify_passkey_attestation: "#/components/schemas/StateOnboardingVerifyPasskeyAttestation"
+          device_trust: "#/components/schemas/StateDeviceTrust"
+          thirdparty: "#/components/schemas/StateThirdParty"
+          success: "#/components/schemas/StateSuccessLogin"
+    StatesProfile:
+      oneOf:
+        - $ref: "#/components/schemas/StatePreflight"
+        - $ref: "#/components/schemas/StateProfileInit"
+        - $ref: "#/components/schemas/StateProfileAccountDeleted"
+        - $ref: "#/components/schemas/StatePasscodeConfirmation"
+        - $ref: "#/components/schemas/StateProfileWebauthnCredentialVerification"
+        - $ref: "#/components/schemas/StateMFAOTPSecretCreation"
+        - $ref: "#/components/schemas/StateThirdParty"
+      discriminator:
+        propertyName: name
+        mapping:
+          preflight: "#/components/schemas/StatePreflight"
+          profile_init: "#/components/schemas/StateProfileInit"
+          account_deleted: "#/components/schemas/StateProfileAccountDeleted"
+          passcode_confirmation: "#/components/schemas/StatePasscodeConfirmation"
+          webauthn_credential_verification: "#/components/schemas/StateProfileWebauthnCredentialVerification"
+          mfa_otp_secret_creation: "#/components/schemas/StateMFAOTPSecretCreation"
+          thirdparty: "#/components/schemas/StateThirdParty"
+    StatesRegistration:
+      oneOf:
+        - $ref: "#/components/schemas/StatePreflight"
+        - $ref: "#/components/schemas/StateRegistrationInit"
+        - $ref: "#/components/schemas/StatePasscodeConfirmation"
+        - $ref: "#/components/schemas/StatePasswordCreation"
+        - $ref: "#/components/schemas/StateCredentialOnboardingChooser"
+        - $ref: "#/components/schemas/StateMFAMethodChooser"
+        - $ref: "#/components/schemas/StateMFAOTPSecretCreation"
+        - $ref: "#/components/schemas/StateMFASecurityKeyCreation"
+        - $ref: "#/components/schemas/StateOnboardingCreatePasskey"
+        - $ref: "#/components/schemas/StateOnboardingVerifyPasskeyAttestation"
+        - $ref: "#/components/schemas/StateThirdParty"
+        - $ref: "#/components/schemas/StateSuccessRegistration"
+      discriminator:
+        propertyName: name
+        mapping:
+          preflight: "#/components/schemas/StatePreflight"
+          registration_init: "#/components/schemas/StateRegistrationInit"
+          passcode_confirmation: "#/components/schemas/StatePasscodeConfirmation"
+          password_creation: "#/components/schemas/StatePasswordCreation"
+          credential_onboarding_chooser: "#/components/schemas/StateCredentialOnboardingChooser"
+          onboarding_create_passkey: "#/components/schemas/StateOnboardingCreatePasskey"
+          onboarding_verify_passkey_attestation: "#/components/schemas/StateOnboardingVerifyPasskeyAttestation"
+          mfa_method_chooser: "#/components/schemas/StateMFAMethodChooser"
+          mfa_otp_secret_creation: "#/components/schemas/StateMFAOTPSecretCreation"
+          mfa_security_key_creation: "#/components/schemas/StateMFASecurityKeyCreation"
+          thirdparty: "#/components/schemas/StateThirdParty"
+          success: "#/components/schemas/StateSuccessRegistration"
+    StatesTokenExchange:
+      oneOf:
+        - $ref: "#/components/schemas/StatePasscodeConfirmation"
+        - $ref: "#/components/schemas/StateOnboardingUsername"
+        - $ref: "#/components/schemas/StateThirdParty"
+        - $ref: "#/components/schemas/StateSuccessTokenExchange"
+      discriminator:
+        propertyName: name
+        mapping:
+          thirdparty: "#/components/schemas/StateThirdParty"
+          passcode_confirmation: "#/components/schemas/StatePasscodeConfirmation"
+          onboarding_username: "#/components/schemas/StateOnboardingUsername"
+          success: "#/components/schemas/StateSuccessTokenExchange"
+    WebauthnCredential:
+      type: object
+      properties:
+        aaguid:
+          type: string
+          format: uuid
+        attestation_type:
+          type: string
+          enum:
+            - none
+            - packed
+            - tpm
+            - android-key
+            - android-safetynet
+            - fido-u2f
+            - apple
+        backup_eligible:
+          type: boolean
+        backup_state:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        last_used_at:
+          type: string
+          format: date-time
+        mfa_only:
+          type: boolean
+        public-key:
+          type: string
+        transports:
+          type: array
+          items:
+            type: string
+            enum:
+              - ble
+              - internal
+              - nfc
+              - usb
+    X-Auth-Token:
+      type: string
+      format: JWT
+    X-Session-Lifetime:
+      type: number
+    X-Session-Retention:
+      type: string
+      enum:
+        - session
+        - persistent
+    CookieSession:
+      description: |
+        Value `<JWT>` is a [JSON Web Token](https://www.rfc-editor.org/rfc/rfc7519.html)
+        
+        Only present on the `success` state of the flow.
+      type: string
+      example: hanko=<JWT>; Path=/; HttpOnly
+    CookieDeviceToken:
+      description: |
+        Issued on a login flow's success if the `trust_device` action was executed during the flow. Used during 
+        subsequent login flows to check if MFA (if it is enabled and the user has registered an MFA credential) 
+        can be skipped.
+
+        Only present on the `success` state of the flow.
+      type: string
+      example: |
+        hanko-device-token=dl4yEFrW8XYU2GQ6IN3gJeqTiVhDKsfK_GYh-_HsAk4ZBdG1M6iA6QXQDJGSJNruS41_-bHTnlDjx8GyJ_WKA==,Path=/; HttpOnly, Secure
+  responses:
+    LoginFlowResponse:
+      description: LoginFlowResponse
+      headers:
+        X-Auth-Token:
+          description: |
+            Used for cross-domain communication between client and Hanko API.
+            
+            Only present if configured on the tenant and on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Auth-Token'
+        X-Session-Lifetime:
+          description: |
+            Contains the seconds until the session expires.
+            
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Session-Lifetime'
+        X-Session-Retention:
+          description: |
+            Serves as a hint at what type of cookie (session or persistent) should be created.
+
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Session-Retention'
+        Set-Cookie:
+          schema:
+            anyOf:
+              - $ref: '#/components/schemas/CookieSession'
+              - $ref: '#/components/schemas/CookieDeviceToken'
+          examples:
+            session:
+              value: hanko=<JWT>; Path=/; HttpOnly
+            device_token:
+              value:  hanko-device-token=dl4yEFrW8XYU2GQ6IN3gJeqTiVhDKsfK_GYh-_HsAk4ZBdG1M6iA6QXQDJGSJNruS41_-bHTnlDjx8GyJ_WKA==,Path=/; HttpOnly, Secure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatesLogin"
+    LoginFlowResponseBadRequestError:
+      description: LoginFlowResponseBadRequestError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - oneOf:
+                  - $ref: "#/components/schemas/StateLoginInit"
+                  - $ref: "#/components/schemas/StateLoginPasskey"
+                  - $ref: "#/components/schemas/StateLoginPassword"
+                  - $ref: "#/components/schemas/StatePasscodeConfirmation"
+                  - $ref: "#/components/schemas/StatePasswordCreation"
+                  - $ref: "#/components/schemas/StateOnboardingEmail"
+                  - $ref: "#/components/schemas/StateOnboardingCreatePasskey"
+                  - $ref: "#/components/schemas/StateOnboardingVerifyPasskeyAttestation"
+                  - $ref: "#/components/schemas/StateOnboardingUsername"
+                  - $ref: "#/components/schemas/StateThirdParty"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 400
+                  error:
+                    $ref: "#/components/schemas/Error"
+    ProfileFlowResponse:
+      description: ProfileFlowResponse
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatesProfile"
+    TokenExchangeFlowResponse:
+      description: TokenExchangeFlowResponse
+      headers:
+        X-Auth-Token:
+          description: |
+            Enable via configuration option `session.enable_auth_token_header`
+            for purposes of cross-domain communication between client and Hanko API.
+
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Auth-Token'
+        X-Session-Lifetime:
+          description: |
+            Contains the seconds until the session expires.
+
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Session-Lifetime'
+        X-Session-Retention:
+          description: |
+            Serves as a hint at what type of cookie (session or persistent) should be created.
+
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Session-Retention'
+        Set-Cookie:
+          description: |
+            Value `<JWT>` is a [JSON Web Token](https://www.rfc-editor.org/rfc/rfc7519.html)
+
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/CookieSession'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatesTokenExchange"
+    FlowResponseForbiddenError:
+      description: FlowResponseForbiddenError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/StateError"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 403
+                  error:
+                    allOf:
+                      - $ref: "#/components/schemas/Error"
+                      - example:
+                          code: operation_not_permitted_error
+                          message: The flow is not permitted.
+    FlowResponseGoneError:
+      description: FlowResponseGoneError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/StateError"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 410
+                  error:
+                    allOf:
+                      - $ref: "#/components/schemas/Error"
+                      - example:
+                          code: flow_expired_error
+                          message: The flow has expired.
+    FlowResponseInternalServerError:
+      description: FlowResponseInternalServerError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/StateError"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 500
+                  error:
+                    allOf:
+                      - $ref: "#/components/schemas/Error"
+                      - example:
+                          code: technical_error
+                          message: Something went wrong.
+    FlowResponseNotFoundError:
+      description: FlowResponseNotFoundError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/StateError"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 404
+                  error:
+                    allOf:
+                      - $ref: "#/components/schemas/Error"
+                      - example:
+                          code: not_found
+                          message: The requested resource was not found.
+    FlowResponseTooManyRequestsError:
+      description: FlowResponseTooManyRequestsError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/StateError"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 429
+                  payload:
+                    $ref: "#/components/schemas/PayloadResendAfter"
+                  error:
+                    allOf:
+                      - $ref: "#/components/schemas/Error"
+                      - example:
+                          code: rate_limit_exceeded
+                          message: The rate limit has been exceeded.
+    FlowResponseUnauthorizedError:
+      description: FlowResponseUnauthorizedError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/StateError"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 401
+                  error:
+                    allOf:
+                      - $ref: "#/components/schemas/Error"
+                      - example:
+                          code: passcode_max_attempts_reached
+                          message: The passcode was entered wrong too many times.
+    ProfileFlowResponseBadRequestError:
+      description: ProfileFlowResponseBadRequestError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - oneOf:
+                  - $ref: "#/components/schemas/StateProfileInit"
+                  - $ref: "#/components/schemas/StatePasscodeConfirmation"
+                  - $ref: "#/components/schemas/StateProfileWebauthnCredentialVerification"
+              - type: object
+                properties:
+                  status:
+                    enum:
+                      - 400
+                  error:
+                    $ref: "#/components/schemas/Error"
+    RegistrationFlowResponse:
+      description: RegistrationFlowResponse
+      headers:
+        X-Auth-Token:
+          description: |
+            Enable via configuration option `session.enable_auth_token_header`
+            for purposes of cross-domain communication between client and Hanko API.
+            
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Auth-Token'
+        X-Session-Lifetime:
+          description: |
+            Contains the seconds until the session expires.
+            
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Session-Lifetime'
+        X-Session-Retention:
+          description: |
+            Serves as a hint at what type of cookie (session or persistent) should be created.
+
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/X-Session-Retention'
+        Set-Cookie:
+          description: |
+            Value `<JWT>` is a [JSON Web Token](https://www.rfc-editor.org/rfc/rfc7519.html)
+            
+            Only present on the `success` state of the flow.
+          schema:
+            $ref: '#/components/schemas/CookieSession'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatesRegistration"
+    RegistrationFlowResponseBadRequestError:
+      description: RegistrationFlowResponseBadRequestError
+      content:
+        application/json:
+          schema:
+            allOf:
+              - oneOf:
+                  - $ref: "#/components/schemas/StateRegistrationInit"
+                  - $ref: "#/components/schemas/StatePasscodeConfirmation"
+                  - $ref: "#/components/schemas/StatePasswordCreation"
+                  - $ref: "#/components/schemas/StateOnboardingCreatePasskey"
+                  - $ref: "#/components/schemas/StateOnboardingVerifyPasskeyAttestation"
+                  - $ref: "#/components/schemas/StateThirdParty"
+              - type: object
+                properties:
+                  error:
+                    $ref: "#/components/schemas/Error"
+  requestBodies:
+    RegistrationRequestBody:
+      description: RegistrationRequestBody
+      content:
+        application/json:
+          schema:
+            title: Registration request body
+            type: object
+            properties:
+              input_data:
+                oneOf:
+                  - $ref: "#/components/schemas/InputDataRegisterClientCapabilities"
+                  - $ref: "#/components/schemas/InputDataRegisterLoginIdentifier"
+                  - $ref: "#/components/schemas/InputDataRememberMe"
+                  - $ref: "#/components/schemas/InputDataRegisterPassword"
+                  - $ref: "#/components/schemas/InputDataVerifyPasscode"
+                  - $ref: "#/components/schemas/InputDataOTPCodeVerify"
+                  - $ref: "#/components/schemas/InputDataThirdPartyOauth"
+                  - $ref: "#/components/schemas/InputDataExchangeToken"
+                  - $ref: "#/components/schemas/InputDataWebauthnVerifyAttestationResponse"
+              csrf_token:
+                $ref: "#/components/schemas/CSRFToken"
+            additionalProperties: false
+    LoginRequestBody:
+      description: LoginRequestBody
+      content:
+        application/json:
+          schema:
+            title: Login request body
+            type: object
+            properties:
+              input_data:
+                oneOf:
+                  - $ref: "#/components/schemas/InputDataRegisterClientCapabilities"
+                  - $ref: "#/components/schemas/InputDataContinueWithLoginIdentifier"
+                  - $ref: "#/components/schemas/InputDataRememberMe"
+                  - $ref: "#/components/schemas/InputDataEmailAddressSet"
+                  - $ref: "#/components/schemas/InputDataVerifyPasscode"
+                  - $ref: "#/components/schemas/InputDataPasswordLogin"
+                  - $ref: "#/components/schemas/InputDataRegisterPassword"
+                  - $ref: "#/components/schemas/InputDataPasswordRecovery"
+                  - $ref: "#/components/schemas/InputDataOTPCodeVerify"
+                  - $ref: "#/components/schemas/InputDataOTPCodeValidate"
+                  - $ref: "#/components/schemas/InputDataThirdPartyOauth"
+                  - $ref: "#/components/schemas/InputDataExchangeToken"
+                  - $ref: "#/components/schemas/InputDataWebauthnVerifyAttestationResponse"
+                  - $ref: "#/components/schemas/InputDataWebauthnVerifyAssertionResponse"
+              csrf_token:
+                $ref: "#/components/schemas/CSRFToken"
+            additionalProperties: false
+    ProfileRequestBody:
+      description: ProfileRequestBody
+      content:
+        application/json:
+          schema:
+            title: Profile request body
+            type: object
+            properties:
+              input_data:
+                oneOf:
+                  - $ref: "#/components/schemas/InputDataRegisterClientCapabilities"
+                  - $ref: "#/components/schemas/InputDataConnectThirdPartyOAuthProvider"
+                  - $ref: "#/components/schemas/InputDataDisconnectThirdPartyOAuthProvider"
+                  - $ref: "#/components/schemas/InputDataEmailCreate"
+                  - $ref: "#/components/schemas/InputDataEmailDelete"
+                  - $ref: "#/components/schemas/InputDataEmailSetPrimary"
+                  - $ref: "#/components/schemas/InputDataEmailVerify"
+                  - $ref: "#/components/schemas/InputDataExchangeToken"
+                  - $ref: "#/components/schemas/InputDataPasswordCreate"
+                  - $ref: "#/components/schemas/InputDataPasswordUpdate"
+                  - $ref: "#/components/schemas/InputDataPatchMetadata"
+                  - $ref: "#/components/schemas/InputDataOTPCodeVerify"
+                  - $ref: "#/components/schemas/InputDataSecurityKeyDelete"
+                  - $ref: "#/components/schemas/InputDataSessionDelete"
+                  - $ref: "#/components/schemas/InputDataUsernameSet"
+                  - $ref: "#/components/schemas/InputDataVerifyPasscode"
+                  - $ref: "#/components/schemas/InputDataWebauthnCredentialRename"
+                  - $ref: "#/components/schemas/InputDataWebauthnVerifyAttestationResponse"
+              csrf_token:
+                $ref: "#/components/schemas/CSRFToken"
+            additionalProperties: false
+    TokenExchangeRequestBody:
+      description: TokenExchangeRequestBody
+      content:
+        application/json:
+          schema:
+            title: Token exchange request body
+            type: object
+            properties:
+              input_data:
+                oneOf:
+                  - $ref: "#/components/schemas/InputDataExchangeToken"
+                  - $ref: "#/components/schemas/InputDataVerifyPasscode"
+                  - $ref: "#/components/schemas/InputDataUsernameSet"
+              csrf_token:
+                $ref: "#/components/schemas/CSRFToken"
+            additionalProperties: false

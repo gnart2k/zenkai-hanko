@@ -1,0 +1,1538 @@
+openapi: 3.0.3
+info:
+  version: "1.2.0"
+  title: "Hanko Admin API"
+  description: |
+    ## Introduction
+
+    This is the OpenAPI specification for the [Hanko Admin API](https://github.com/teamhanko/hanko/blob/main/backend/README.md#start-private-api).
+
+    ## Authentication
+
+    The Admin API must be protected by an access management system.
+
+    ---
+
+  contact:
+    email: developers@hanko.io
+  license:
+    name: AGPL-3.0-or-later
+    url: https://www.gnu.org/licenses/agpl-3.0.txt
+externalDocs:
+  description: More about Hanko
+  url: https://github.com/teamhanko/hanko
+servers:
+  # - url: "http://localhost:8001"
+  - url: "https://{tenant_id}.hanko.io/admin"
+    variables:
+      tenant_id:
+        default: ""
+        description: "The (UU)ID of a tenant. Replace the default value with your tenant ID."
+paths:
+  /:
+    get:
+      summary: Status page
+      description: Return information about the API status. Returns a 500 if there are issues with database connectivity.
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: status
+      tags:
+        - Status
+      responses:
+        "200":
+          description: "API is running"
+          content:
+            text/html:
+              schema:
+                type: string
+        "500":
+          description: "API is not functioning properly"
+          content:
+            text/html:
+              schema:
+                type: string
+  /users:
+    get:
+      summary: "Get a list of users"
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: listUsers
+      tags:
+        - User Management
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: The page which should be returned
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 20
+          description: The number of returned items
+        - in: query
+          name: user_id
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/UUID4"
+            example: c339547d-e17d-4ba7-8a1d-b3d5a4d17c1c
+          description: | 
+            A single ID or a comma-separated list of IDs. Only users with the specified IDs are included in the result.
+        - in: query
+          name: email
+          schema:
+            type: string
+            format: email
+            example: example@example.com
+          description: Only users with the specified email are included
+        - in: query
+          name: sort_direction
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+          description: The sort direction of the returned list (always sorted by created_at)
+      responses:
+        "200":
+          description: "Details about users"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserBase"
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      summary: Create a new user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: createUser
+      tags:
+        - User Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  description: The ID of the new user
+                  allOf:
+                    - $ref: "#/components/schemas/UUID4"
+                emails:
+                  description: The email addresses of the new user
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      address:
+                        type: string
+                      is_primary:
+                        type: boolean
+                      is_verified:
+                        type: boolean
+                    required:
+                      - address
+                      - is_primary
+                username:
+                  description: The username of the new user
+                  type: string
+                created_at:
+                  description: Time of creation of the user
+                  type: string
+                  format: date-time
+              required:
+                - emails
+      responses:
+        "200":
+          description: "Details of the newly created user"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /users/{id}:
+    delete:
+      summary: "Delete a user by ID"
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: deleteUser
+      tags:
+        - User Management
+      parameters:
+        - name: id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID4"
+      responses:
+        "204":
+          description: "Deleted"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      summary: "Get a user by ID"
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: getUser
+      tags:
+        - User Management
+      parameters:
+        - name: id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID4"
+      responses:
+        "200":
+          description: "Details about the user"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      summary: "Update a user by ID"
+      description: |
+        Updates a subset of user-level attributes.
+
+        Other sub-resources (e.g. emails, credentials) are managed via dedicated endpoints and are not updated via this endpoint.
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: patchUser
+      tags:
+        - User Management
+      parameters:
+        - name: id
+          in: path
+          description: ID of the user
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID4"
+      requestBody:
+        $ref: "#/components/requestBodies/PatchUser"
+      responses:
+        "200":
+          description: "Details about the user"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /audit_logs:
+    get:
+      summary: "Get a list of audit logs"
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: listAuditLogs
+      tags:
+        - Audit Logs
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: The page which should be returned
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 20
+          description: The number of returned items
+        - in: query
+          name: start_time
+          schema:
+            type: string
+            example: 2022-09-12T12:48:48Z
+          description: Date and time from which the logs are included
+        - in: query
+          name: end_time
+          schema:
+            type: string
+            example: 2022-09-15T12:48:48Z
+          description: Date and time to which the logs are included
+        - in: query
+          name: actor_user_id
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/UUID4"
+            example: c339547d-e17d-4ba7-8a1d-b3d5a4d17c1c
+          description: Only audit logs with the specified user_id are included
+        - in: query
+          name: actor_email
+          schema:
+            type: string
+            format: email
+            example: example@example.com
+          description: Only audit logs with the specified email are included
+        - in: query
+          name: meta_source_ip
+          schema:
+            allOf:
+              - type: string
+                format: ipv4
+              - type: string
+                format: ipv6
+            example: 127.0.0.1
+          description: Only audit logs with the specified ip address are included
+        - in: query
+          name: q
+          schema:
+            type: string
+            example: example.com
+          description: Only audit logs are included when the search string matches values in meta_source_ip or actor_user_id or actor_email
+        - in: query
+          name: type
+          schema:
+            type: array
+            items:
+              allOf:
+                - $ref: "#/components/schemas/AuditLogTypes"
+            example: user_created
+          style: form
+          explode: true
+          description: Only audit logs with the specified type are included
+      responses:
+        "200":
+          description: "Details about audit logs"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/X-Total-Count"
+            Link:
+              $ref: "#/components/headers/Link"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /metrics:
+    get:
+      summary: "Get Prometheus metrics."
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: getMetrics
+      tags:
+        - Metrics
+      responses:
+        "200":
+          description: "Prometheus Metrics for details about the format see: https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details"
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: 'go_gc_duration_seconds{quantile="0"} 2.5875e-05'
+  /webhooks:
+    get:
+      summary: Get a list of webhooks
+      description: "Returns a list of all configured webhooks. "
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: list-webhooks
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DatabaseWebhook"
+                  config:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Webhook"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      summary: Create a new database webhook
+      description: ""
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: create-db-webhooks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Webhook"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatabaseWebhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/webhooks/{id}":
+    get:
+      summary: Get a webhook by ID
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-webhooks-id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatabaseWebhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      summary: Delete a webhook by ID
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: delete-webhooks-id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          description: Internal Server Error
+    put:
+      summary: Update a webhook by ID
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: put-webhooks-id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Webhook"
+                - type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                  required:
+                    - enabled
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatabaseWebhook"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/emails":
+    get:
+      summary: Get a list of emails for a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-id-emails
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Email"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      summary: Create an email for a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: post-users-id-emails
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        $ref: "#/components/requestBodies/CreateEmail"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/emails/{email_id}":
+    get:
+      summary: Get an email of a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-id-emails-email_id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: email_id
+          in: path
+          description: UUID of the requested email
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      summary: Remove an email from a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: delete-users-emails-email_id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: email_id
+          in: path
+          description: UUID of the requested email
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/emails/{email_id}/set_primary":
+    post:
+      summary: Set email as primary
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: post-users-emails-email_id-set_primary
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: email_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/metadata":
+    get:
+      summary: Get metadata of a user
+      tags:
+        - User Metadata Management
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-user-metadata
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMetadata"
+        "204":
+          description: No content (user has no metadata)
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      summary: Patch metadata of a user
+      description: |
+        Updates a users metadata by deep merging the metadata patch from
+        the request with existing metadata.
+        
+        Set the entire request to `null` to clear all metadata:
+        Set any of `public_metadata`, `private_metadata`, `unsafe_metadata` to null to
+        clear metadata for that category. 
+        
+        An empty object (`{}`) for the top level request object or an empty object for
+        `public_metadata`, `private_metadata` or the `unsafe_metadata` property represent
+        a noop patch. 
+        
+        Unknown top level keys besides `public_metadata`, `private_metadata` or `unsafe_metadata`
+        are ignored.
+        
+        All other top level request values (e.g. an empty string, a non-empty string, an array) result in a bad request.
+      tags:
+        - User Metadata Management
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: patch-user-metadata
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/UserMetadata"
+                - description: "The user metadata patch"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMetadata"
+        "204":
+          description: No content (user has no metadata)
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/sessions":
+    get:
+      summary: Get users active sessions
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-sessions
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/sessions/{session_id}":
+    delete:
+      summary: Delete a session from a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: delete-users-sessions-session_id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/otp":
+    get:
+      summary: Get the OTP secret metadata of a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-otp
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OTP"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      summary: Delete the OTP secret from a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: delete-users-otp
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/webauthn_credentials":
+    get:
+      summary: Get a list of all WebAuthn credentials for a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-webauthn_credentials
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WebAuthnCredential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/webauthn_credentials/{credential_id}":
+    get:
+      summary: Get a WebAuthn credential of a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-webauthn_credentials-credential_id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebAuthnCredential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      summary: Delete a WebAuthn credential from a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: delete-users-webauthn_credentials-credential_id
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/users/{id}/password":
+    get:
+      summary: Get password metadata of a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-password
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Password"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      summary: Create a password for a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: post-users-password
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePassword"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Password"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      summary: Update the password for a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: put-users-password
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePassword"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Password"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      summary: Delete the password of a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: get-users-password
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  "/sessions":
+    post:
+      summary: Create a new session token for a user
+      security:
+        - BearerApiKeyAuth: [ ]
+      operationId: post_sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSession"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    BearerApiKeyAuth:
+      description: Bearer authentication header of the form `Bearer <token>`, where `<token>` is your API key. Must only be used when using Hanko Cloud.
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+  parameters:
+    Id:
+      name: id
+      in: path
+      description: UUID of the requested object
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBodies:
+    PatchUser:
+      content:
+        application/json:
+          schema:
+            type: object
+            description: |
+              Patch payload for updating a user.
+              
+              Omitted properties are not changed.
+            additionalProperties: false
+            properties:
+              username:
+                description: |
+                  Set a new username for the user.
+                  
+                  Send `null` to remove the username.
+                type: string
+                nullable: true
+                example: "john_doe_123"
+              name:
+                description: |
+                  Set a new username for the user.
+
+                  Send `null` to remove the name.
+                type: string
+                nullable: true
+                example: "John Doe"
+              given_name:
+                description: |
+                  Set a new given name for the user.
+
+                  Send `null` to remove the given_name.
+                type: string
+                nullable: true
+                example: "John"
+              family_name:
+                description: |
+                  Set a new family name for the user.
+
+                  Send `null` to remove the family_name.
+                type: string
+                nullable: true
+                example: "Doe"
+              picture:
+                description: |
+                  Set a new picture for the user. Must be a public URL accessible
+                  via HTTP/HTTPS. Must not contain credentials.
+
+                  Send `null` to remove the picture.
+                type: string
+                nullable: true
+                maxLength: 2048
+                format: uri
+    CreateEmail:
+      description: Request Body for creating an email for a user
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              address:
+                type: string
+                format: email
+              is_primary:
+                type: boolean
+              is_verified:
+                type: boolean
+            required:
+              - address
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 400
+            message: Bad Request
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 409
+            message: Conflict
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 500
+            message: Internal Server Error
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 404
+            message: Not found
+  schemas:
+    UserMetadata:
+      description: User metadata
+      type: object
+      properties:
+        public_metadata:
+          type: object
+          additionalProperties: {}
+          example:
+            role: admin
+        private_metadata:
+          type: object
+          additionalProperties: {}
+          example:
+            internal_id: e6c19cfb-09a2-41e5-a908-e33193b7ca0a
+        unsafe_metadata:
+          type: object
+          additionalProperties: {}
+          example:
+            birthday: "2025-05-12"
+    Identity:
+      description: A third party provider identity
+      type: object
+      properties:
+        id:
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+          description: The ID of the identity
+          example: 77f8d594-9765-4891-ab2b-f31a797b531d
+        email_id:
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+          description: The ID of the email this identity is coupled with
+          example: d4095586-8318-4a40-a840-b4260496f85a
+        provider_id:
+          description: The user's third party provider account/user ID
+          type: string
+        provider_name:
+          description: The name of the third party provider this identity coupled with
+          type: string
+        created_at:
+          description: Time of creation of the password credential
+          type: string
+          format: date-time
+        updated_at:
+          description: Time of last update of the password credential
+          type: string
+          format: date-time
+    Identities:
+      description: A list of third party provider identities
+      type: array
+      items:
+        $ref: "#/components/schemas/Identity"
+    Password:
+      description: The password credential of a user
+      type: object
+      properties:
+        id:
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+          description: The ID of the password credential
+          example: 28a7206b-e789-435a-b87c-108e034135c2
+        created_at:
+          description: Time of creation of the password credential
+          type: string
+          format: date-time
+        updated_at:
+          description: Time of last update of the password credential
+          type: string
+          format: date-time
+    UUID4:
+      type: string
+      format: uuid4
+      example: c339547d-e17d-4ba7-8a1d-b3d5a4d17c1c
+    UserBase:
+      type: object
+      required:
+        - id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          description: The ID of the user
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+        created_at:
+          description: Time of creation of the user
+          type: string
+          format: date-time
+        updated_at:
+          description: Time of last update of the user
+          type: string
+          format: date-time
+        webauthn_credentials:
+          description: List of registered Webauthn credentials
+          type: array
+          items:
+            $ref: "#/components/schemas/WebAuthnCredential"
+        emails:
+          description: List of emails associated to the user
+          type: array
+          items:
+            $ref: "#/components/schemas/Email"
+        username:
+          $ref: "#/components/schemas/Username"
+    User:
+      allOf:
+        - $ref: "#/components/schemas/UserBase"
+        - type: object
+          properties:
+            otp:
+              $ref: "#/components/schemas/OTP"
+            password:
+              $ref: "#/components/schemas/Password"
+            identities:
+              $ref: "#/components/schemas/Identities"
+            metadata:
+              $ref: "#/components/schemas/UserMetadata"
+    Username:
+      description: The username of the user
+      type: object
+      properties:
+        id:
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+          description: The ID of the username
+          example: 8cbed467-554b-4d17-b23f-bce1b4f1db92
+        created_at:
+          description: Time of creation of the username
+          type: string
+          format: date-time
+        updated_at:
+          description: Time of last update of the username
+          type: string
+          format: date-time
+        username:
+          description: The username of the user
+          type: string
+          example: john_doe_123
+    WebAuthnCredential:
+      type: object
+      required:
+        - id
+        - public_key
+        - attestation_type
+        - aaguid
+        - created_at
+        - backup_eligible
+        - backup_state
+        - mfa_only
+      properties:
+        id:
+          description: The ID of the credential
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+          example: f9bebc04-b894-4018-bdb8-8b520a532fef
+        name:
+          description: A name that the user choose
+          type: string
+        public_key:
+          description: The public key of the credential
+          type: string
+        attestation_type:
+          description: The attestation type the credential was registered with
+          type: string
+        aaguid:
+          description: The AAGUID of the authenticator the credentials was created on
+          type: string
+        transports:
+          description: The ways the authenticator is connected
+          type: array
+          items:
+            type: string
+        created_at:
+          description: Time of creation of the credential
+          type: string
+          format: date-time
+        last_used_at:
+          description: The time when the credential was last used
+          type: string
+          format: date-time
+        backup_eligible:
+          description: Indicates if the credential can be backed up
+          type: boolean
+        backup_state:
+          description: Indicates if the credential is backed up
+          type: boolean
+        mfa_only:
+          description: Indicates if the credential can only be used as a MFA credential
+          type: boolean
+    Email:
+      type: object
+      required:
+        - id
+        - address
+        - is_verified
+        - is_primary
+        - created_at
+        - updated_at
+      properties:
+        id:
+          description: The ID of the email
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+          example: 802df042-1ac2-496d-af81-6ace729ed055
+        address:
+          description: The email address
+          type: string
+          format: email
+        is_verified:
+          description: Indicated the email has been verified.
+          type: boolean
+        is_primary:
+          description: Indicates it's the primary email address.
+          type: boolean
+        created_at:
+          description: Time of creation of the email
+          type: string
+          format: date-time
+        updated_at:
+          description: Time of last update of the email
+          type: string
+          format: date-time
+    AuditLog:
+      type: object
+      required:
+        - id
+        - type
+        - meta_http_request_id
+        - meta_source_ip
+        - meta_user_agent
+        - created_at
+        - updated_at
+      properties:
+        id:
+          description: The ID of the audit log
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+        type:
+          allOf:
+            - $ref: "#/components/schemas/AuditLogTypes"
+        error:
+          description: A more detailed message why something failed
+          type: string
+        meta_http_request_id:
+          description: The ID of the corresponding http request
+          type: string
+          example: 0a2xsrhlhiQv49FIpq8KV8uQVq6ky9Bw
+        meta_source_ip:
+          description: The IP from where the http request came from
+          type: string
+          format: ip-address
+          example: 172.27.0.1
+        meta_user_agent:
+          description: The user agent from where the http request came from
+          type: string
+        actor_user_id:
+          description: The userID from the actor
+          allOf:
+            - $ref: "#/components/schemas/UUID4"
+        actor_email:
+          description: The email from the actor
+          type: string
+          format: email
+        created_at:
+          description: Time of creation of the audit log
+          type: string
+          format: date-time
+          example: "2022-09-14T12:15:09.788784Z"
+    DatabaseWebhookEvent:
+      type: object
+      title: DatabaseWebhookEvent
+      properties:
+        id:
+          type: string
+          format: uuid
+        event:
+          type: string
+          enum:
+            - user
+            - user.login
+            - user.create
+            - user.delete
+            - user.update
+            - user.update.email
+            - user.update.email.create
+            - user.update.email.delete
+            - user.update.email.primary
+            - user.update.username
+            - user.update.username.create
+            - user.update.username.delete
+            - user.update.username.update
+            - email.send
+    DatabaseWebhook:
+      type: object
+      title: DatabaseWebhook
+      properties:
+        id:
+          type: string
+          format: uuid
+        callback:
+          type: string
+          format: uri
+        enabled:
+          type: boolean
+        failures:
+          type: integer
+          minimum: 0
+        expires_at:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DatabaseWebhookEvent"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          description: Time of last update of the audit log
+          type: string
+          format: date-time
+          example: "2022-09-14T12:15:09.788784Z"
+    Webhook:
+      type: object
+      title: Webhook
+      properties:
+        callback:
+          type: string
+          format: uri
+        events:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - user
+              - user.login
+              - user.create
+              - user.delete
+              - user.update
+              - user.update.email
+              - user.update.email.create
+              - user.update.email.delete
+              - user.update.email.primary
+              - user.update.username
+              - user.update.username.create
+              - user.update.username.delete
+              - user.update.username.update
+              - email.send
+      required:
+        - callback
+        - events
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+    AuditLogTypes:
+      description: The type of the audit log
+      type: string
+      enum:
+        - user_logged_out
+        - password_set_succeeded
+        - password_set_failed
+        - password_login_succeeded
+        - password_login_failed
+        - passcode_login_init_succeeded
+        - passcode_login_init_failed
+        - passcode_login_final_succeeded
+        - passcode_login_final_failed
+        - webauthn_registration_init_succeeded
+        - webauthn_registration_init_failed
+        - webauthn_registration_final_succeeded
+        - webauthn_registration_final_failed
+        - webauthn_authentication_init_succeeded
+        - webauthn_authentication_init_failed
+        - webauthn_authentication_final_succeeded
+        - webauthn_authentication_final_failed
+        - webauthn_credential_updated
+        - webauthn_credential_deleted
+        - thirdparty_signup_succeeded
+        - thirdparty_signin_succeeded
+        - thirdparty_linking_succeeded
+        - thirdparty_signin_signup_failed
+        - token_exchange_succeeded
+        - token_exchange_failed
+        - user_created
+        - email_created
+        - email_verified
+        - email_deleted
+        - primary_email_changed
+        - user_deleted
+        - login_success
+        - login_failure
+        - otp_created
+        - passkey_created
+        - passkey_deleted
+        - security_key_created
+        - username_changed
+        - username_deleted
+        - password_changed
+        - password_deleted
+    CreateSession:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        user_agent:
+          type: string
+        ip_address:
+          type: string
+          format: ip_address
+      required:
+        - user_id
+    CreateSessionResponse:
+      type: object
+      properties:
+        session_token:
+          type: string
+          format: JWT
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        user_agent:
+          type: string
+        ip_address:
+          type: string
+          format: ip_address
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_used:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user_id
+        - created_at
+        - updated_at
+        - last_used
+    OTP:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - created_at
+    CreatePassword:
+      type: object
+      properties:
+        password:
+          type: string
+  headers:
+    X-Total-Count:
+      schema:
+        type: string
+      description: The total count of the requested resource considering query parameter
+      example: 1234
+    Link:
+      schema:
+        type: string
+      description: Web Linking as described in RFC5988
+      example: <http://localhost:8001/resource?page=1&per_page=10>; rel="first",<http://localhost:8001/resource?page=16&per_page=10>; rel="last",<http://localhost:8001/resource?page=6&per_page=10>; rel="next",<http://localhost:8001/resource?page=4&per_page=10>; rel="prev"

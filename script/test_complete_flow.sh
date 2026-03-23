@@ -1,13 +1,4 @@
 #!/bin/bash
-
-echo "=== Hanko Registration + Login Complete Test ==="
-cd /Users/mac/se/zenkai/hanko/backend
-
-# Start server
-./hanko serve public --config config/config-test.yaml &
-SERVER_PID=$!
-sleep 3
-
 echo "=== PART 1: COMPLETE REGISTRATION ==="
 
 # Step 1: Registration Preflight
