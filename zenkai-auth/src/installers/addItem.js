@@ -23,11 +23,25 @@ async function collectFilesRecursively(rootDir) {
   return output;
 }
 
-async function ensureDefaultFolders(projectRoot) {
-  for (const folder of DEFAULT_FOLDERS) {
-    logger.info(`Creating ${folder}...`);
-    await fs.ensureDir(path.join(projectRoot, folder));
+async function resolveTargetLayout(projectRoot) {
+  const packageJsonPath = path.join(projectRoot, "package.json");
+  const hasPackageJson = await fs.pathExists(packageJsonPath);
+  let isNextProject = false;
+
+  if (hasPackageJson) {
+    const packageJson = await fs.readJson(packageJsonPath);
+    const deps = packageJson.dependencies || {};
+    const devDeps = packageJson.devDependencies || {};
+    isNextProject = Boolean(deps.next || devDeps.next);
   }
+
+  const hasSrcDir = await fs.pathExists(path.join(projectRoot, "src"));
+  const targetRoot = hasSrcDir ? path.join(projectRoot, "src") : projectRoot;
+
+  return {
+    isNextProject,
+    targetRoot
+  };
 }
 
 async function resolveTemplateDir(itemName, remoteInput) {
@@ -50,7 +64,7 @@ async function resolveTemplateDir(itemName, remoteInput) {
 
 function getPlaceholderReplacements(options) {
   return {
-    AUTH_API_URL: options.authApiUrl || process.env.AUTH_API_URL || "http://localhost:8000"
+    __AUTH_API_URL__: options.authApiUrl || process.env.AUTH_API_URL || "http://localhost:8000"
   };
 }
 
@@ -149,7 +163,21 @@ async function installItem(itemName, options) {
   }
 
   logger.info(`Detected project root: ${projectRoot}`);
-  await ensureDefaultFolders(projectRoot);
+  const layout = await resolveTargetLayout(projectRoot);
+  const folders = layout.isNextProject
+    ? [...DEFAULT_FOLDERS, "app"]
+    : DEFAULT_FOLDERS;
+
+  if (layout.isNextProject) {
+    logger.info(
+      `Detected Next.js project. Installing under ${path.relative(projectRoot, layout.targetRoot) || "."}`
+    );
+  }
+
+  for (const folder of folders) {
+    logger.info(`Creating ${folder}...`);
+    await fs.ensureDir(path.join(layout.targetRoot, folder));
+  }
 
   logger.info(`Installing ${itemName} UI...`);
 
@@ -163,7 +191,7 @@ async function installItem(itemName, options) {
 
     await copyWithGuard({
       sourceDir,
-      targetDir: projectRoot,
+      targetDir: layout.targetRoot,
       force: options.force,
       dryRun: options.dryRun,
       replacements: getPlaceholderReplacements(options)

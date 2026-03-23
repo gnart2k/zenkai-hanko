@@ -1,6 +1,6 @@
 import { Hanko, register } from "@teamhanko/hanko-elements";
 
-const AUTH_API_URL = "__AUTH_API_URL__";
+const AUTH_API_URL = "http://localhost:8000";
 
 let client: Hanko | null = null;
 

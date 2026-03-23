@@ -32,7 +32,10 @@
   },
   "scripts": {
     "start": "node ./bin/index.js",
-    "test:smoke": "node ./bin/index.js add login --dry-run"
+    "test:smoke": "node ./bin/index.js add login --dry-run",
+    "demo:sync": "node ./scripts/sync-demo.js",
+    "demo:dev": "npm run demo:sync && npm --prefix ./demo run dev",
+    "demo:build": "npm run demo:sync && npm --prefix ./demo run build"
   },
   "dependencies": {
     "chalk": "^4.1.2",

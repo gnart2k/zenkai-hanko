@@ -81,3 +81,11 @@ We invite you to join our growing [Discord Community](https://www.hanko.io/commu
 
 # Licenses
 [hanko-elements](frontend/elements) and [hanko-frontend-sdk](frontend/frontend-sdk) are licensed under the [MIT License](frontend/elements/LICENSE). Everything else in this repository, including [hanko backend](backend), is licensed under the [AGPL-3.0](/LICENSE). Non-Copyleft commercial licensing is available on request.
+
+
+
+d38bd9282f796cc1852572d360ad9fa6e682f3b7ef36a4e5357d60f069bc2b7f
+c5af9c45b9ffcd72f255aa819346614d243416099a44c4b24792733b4034177e
+d4ee90a7ad0fc78f7f6552279c4909505b45660d513131286647fd8c89477471
+4f36e761b4693d60c789976b40068ed5e305661b97e8243970e93eca81395398
+33ab7fbc4f8990ded9237f16a06aef517546412fe3b52078cd24ddb6aaa34516
