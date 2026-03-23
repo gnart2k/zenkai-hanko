@@ -149,7 +149,7 @@ flowchart TB
 
 **Notes**
 
-- **Flow API** (`POST /registration`, `/login`, `/profile`, …) is driven by **flowpilot** state machines and returns structured flow states for clients ([backend/handler/public_router.go](../backend/handler/public_router.go)).
+- **Flow API** (`POST /registration`, `/login`, `/profile`, ...) is driven by **flowpilot** state machines and returns structured flow states for clients ([backend/handler/public_router.go](../backend/handler/public_router.go)).
 - **Legacy-style REST** routes (WebAuthn, emails, users, third-party OAuth callbacks, etc.) coexist on the public router as configured in YAML.
 - **Webhooks** can fire on selected lifecycle events; signing uses the same JWK machinery as session tokens where applicable.
 
@@ -177,3 +177,4 @@ flowchart LR
 ```
 
 For HTTP details and integration guides, see the official **[docs.hanko.io](https://docs.hanko.io)** API reference (source: [teamhanko/docs](https://github.com/teamhanko/docs)).
+

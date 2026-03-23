@@ -9,6 +9,11 @@ email_delivery:
     host: "mailslurper"
     port: "2500"
   from_address: noreply@hanko.io
+email:
+  enabled: true
+  require_verification: false
+  use_as_login_identifier: true
+  use_for_authentication: false
 secrets:
   keys:
     - abcedfghijklmnopqrstuvwxyz
@@ -18,6 +23,8 @@ webauthn:
   relying_party:
     origins:
       - "http://localhost:8888"
+      - "http://localhost:3000"
+      - "http://localhost:9001"
 session:
   cookie:
     secure: false # is needed for safari, because safari does not store secure cookies on localhost
@@ -26,13 +33,23 @@ server:
     cors:
       allow_origins:
         - "http://localhost:8888"
+        - "http://localhost:3000"
+        - "http://localhost:9001"
 third_party:
+  # OAuth/OpenID connect callback URL for the IdP (Google/GitHub/...).
+  # This is where the provider sends the auth code to Hanko.
   redirect_url: "http://localhost:8000/thirdparty/callback"
-  error_redirect_url: "http://localhost:8000"
+  # Fallback UI location for errors (must be a page that embeds Hanko Elements).
+  error_redirect_url: "http://localhost:8888"
+  # Where Hanko is allowed to redirect the user after success or error.
+  # Glob patterns are supported by the backend.
   allowed_redirect_urls:
-    - "http://localhost:8000/**"
+    - "http://localhost:8888**"
+    - "http://localhost:3000**"
+    - "http://localhost:9001**"
   providers:
     google:
       enabled: true
       client_id: "1097125888371-dbdtjk5j4afgvpbseb5sdu9ei6k5ncm8.apps.googleusercontent.com"
       secret: "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"
+

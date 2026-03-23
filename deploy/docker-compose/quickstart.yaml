@@ -4,7 +4,7 @@ services:
     build: ../../backend
     volumes:
       - type: bind
-        source: ./config.yaml
+        source: ./config.oauth.yaml
         target: /etc/config/config.yaml
     command: --config /etc/config/config.yaml migrate up
     restart: on-failure
@@ -25,7 +25,7 @@ services:
     command: serve --config /etc/config/config.yaml all
     volumes:
       - type: bind
-        source: ./config.yaml
+        source: ./config.oauth.yaml
         target: /etc/config/config.yaml
     networks:
       - intranet

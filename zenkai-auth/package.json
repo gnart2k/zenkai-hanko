@@ -1,0 +1,43 @@
+{
+  "name": "zenkai-auth",
+  "version": "0.1.0",
+  "description": "Shadcn-style CLI that installs editable auth UI source files.",
+  "keywords": [
+    "cli",
+    "auth",
+    "nextjs",
+    "react",
+    "scaffold"
+  ],
+  "homepage": "https://github.com/your-org/zenkai-auth",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/zenkai-auth.git"
+  },
+  "license": "MIT",
+  "author": "",
+  "type": "commonjs",
+  "bin": {
+    "zenkai-auth": "./bin/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node ./bin/index.js",
+    "test:smoke": "node ./bin/index.js add login --dry-run"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "tar": "^7.4.0"
+  }
+}
