@@ -29,6 +29,8 @@ services:
         target: /etc/config/config.yaml
     networks:
       - intranet
+    env_file:
+      - ./.env
     environment:
       - PASSWORD_ENABLED
   postgresd:

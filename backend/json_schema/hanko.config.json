@@ -341,7 +341,10 @@
           "title": "allow_origins",
           "description": "`allow_origins` determines the value of the Access-Control-Allow-Origin\nresponse header. This header defines a list of [origins](https://developer.mozilla.org/en-US/docs/Glossary/Origin)\nthat may access the resource.\n\nThe wildcard characters `*` and `?` are supported and are converted to regex fragments `.*` and `.` accordingly.",
           "default": [
-            "http://localhost:8888"
+            "http://localhost:8888",
+            "http://localhost:3000",
+            "http://localhost:9001",
+            "http://localhost:3001"
           ]
         },
         "unsafe_wildcard_origin_allowed": {
@@ -1137,7 +1140,10 @@
           "minItems": 1,
           "description": "`origins` is a list of origins for which passkeys/WebAuthn credentials will be accepted by the server. Must\ninclude the protocol and can only be the effective domain, or a registrable domain suffix of the effective\ndomain, as specified in the [`id`](#id). Except for `localhost`, the protocol **must** always be `https` for\npasskeys/WebAuthn to work. IP Addresses will not work.\n\nFor an Android application the origin must be the base64 url encoded SHA256 fingerprint of the signing\ncertificate.",
           "default": [
-            "http://localhost:8888"
+            "http://localhost:8888",
+            "http://localhost:3000",
+            "http://localhost:9001",
+            "http://localhost:3001"
           ]
         }
       },
